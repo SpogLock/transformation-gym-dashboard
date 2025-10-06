@@ -298,7 +298,7 @@ const SalesTable = () => {
       >
         {/* Left Section - Product Browser */}
         <GridItem>
-          <Card borderRadius="xl" h="full">
+          <Card borderRadius="xl" h="full" overflow="hidden">
             <CardHeader>
               <VStack spacing={4} align="stretch">
                 {/* Search and Filters */}
@@ -348,7 +348,7 @@ const SalesTable = () => {
               </VStack>
             </CardHeader>
             
-            <CardBody pt={8}>
+            <CardBody pt={8} overflow="hidden">
               {/* Products Grid */}
               <Grid 
                 templateColumns={{ 
@@ -377,6 +377,7 @@ const SalesTable = () => {
                     transition="all 0.2s ease"
                     w="full"
                     minH="200px"
+                    overflow="hidden"
                     _hover={{
                       transform: "translateY(-2px)",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
@@ -397,7 +398,8 @@ const SalesTable = () => {
                           style={{
                             width: "100%",
                             height: "100%",
-                            objectFit: "cover"
+                            objectFit: "cover",
+                            display: "block"
                           }}
                         />
                       </Box>
@@ -421,7 +423,7 @@ const SalesTable = () => {
                           </Badge>
                         </VStack>
                         
-                        <Text fontSize="xs" color={cardLabelColor} noOfLines={1}>
+                        <Text fontSize="xs" color={cardLabelColor} noOfLines={1} isTruncated>
                           {product.category} • {product.supplier}
                         </Text>
                       </VStack>
