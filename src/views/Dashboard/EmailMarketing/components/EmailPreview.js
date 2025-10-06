@@ -67,8 +67,8 @@ const EmailPreview = ({ isOpen, onClose, campaign, onSend, onSchedule, onEdit })
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-      <ModalOverlay />
-      <ModalContent maxW="900px" maxH="90vh" overflowY="auto">
+      <ModalOverlay backdropFilter="blur(8px)" bg="rgba(0,0,0,0.35)" />
+      <ModalContent maxW="900px" maxH="90vh" overflowY="auto" borderRadius="20px" border="1.5px solid" borderColor={useColorModeValue("white", "whiteAlpha.300")}> 
         <ModalHeader>
           <HStack justify="space-between" w="full">
             <VStack align="start" spacing={0}>
@@ -286,7 +286,12 @@ const EmailPreview = ({ isOpen, onClose, campaign, onSend, onSchedule, onEdit })
                   </Button>
                   <Button
                     leftIcon={<EmailIcon />}
-                    colorScheme="teal"
+                    bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
+                    backgroundImage="linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)"
+                    color="white"
+                    _hover={{ bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)" }}
+                    _active={{ bg: "brand.600" }}
+                    _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
                     onClick={handleSendNow}
                   >
                     Send Now

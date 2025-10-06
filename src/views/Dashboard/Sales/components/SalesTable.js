@@ -625,9 +625,15 @@ const SalesTable = () => {
                           key={method}
                           size="sm"
                           variant={paymentMethod === method ? "solid" : "outline"}
-                          colorScheme="teal"
                           onClick={() => setPaymentMethod(method)}
                           flex="1"
+                          borderColor={paymentMethod === method ? "transparent" : "brand.500"}
+                          color={paymentMethod === method ? "white" : "brand.500"}
+                          bg={paymentMethod === method ? "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)" : "transparent"}
+                          backgroundImage={paymentMethod === method ? "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)" : undefined}
+                          _hover={paymentMethod === method ? { bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)", color: "white" } : { bg: "rgba(49, 151, 149, 0.08)", borderColor: "brand.500" }}
+                          _active={paymentMethod === method ? { bg: "brand.600" } : undefined}
+                          _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
                         >
                           {method}
                         </Button>
@@ -664,10 +670,22 @@ const SalesTable = () => {
 
                   {/* Checkout Button */}
                   <Button
-                    colorScheme="teal"
                     size="lg"
                     onClick={handleCheckout}
                     isDisabled={cart.length === 0 || !paymentMethod}
+                    bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
+                    backgroundImage="linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)"
+                    color="white"
+                    _hover={{ bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)" }}
+                    _active={{ bg: "brand.600" }}
+                    _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
+                    _disabled={{
+                      opacity: 0.7,
+                      cursor: "not-allowed",
+                      bg: "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)",
+                      backgroundImage: "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)",
+                      color: "white"
+                    }}
                   >
                     Checkout - PKR {total.toLocaleString()}
                   </Button>

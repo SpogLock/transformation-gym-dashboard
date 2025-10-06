@@ -577,7 +577,7 @@ The FitZone Team`,
                       <Text fontSize="xs" color={cardLabelColor}>
                         {campaign.sentDate || "Not sent"}
                       </Text>
-                      <Menu>
+                      <Menu placement="bottom-end">
                         <MenuButton
                           as={IconButton}
                           icon={<ViewIcon />}
@@ -585,36 +585,38 @@ The FitZone Team`,
                           size="xs"
                           onClick={(e) => e.stopPropagation()}
                         />
-                        <MenuList>
-                          <MenuItem
-                            icon={<ViewIcon />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewCampaign(campaign);
-                            }}
-                          >
-                            View Details
-                          </MenuItem>
-                          <MenuItem
-                            icon={<EditIcon />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              console.log("Edit campaign:", campaign.name);
-                            }}
-                          >
-                            Edit
-                          </MenuItem>
-                          <MenuItem
-                            icon={<DeleteIcon />}
-                            color="red.500"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCampaign(campaign);
-                            }}
-                          >
-                            Delete
-                          </MenuItem>
-                        </MenuList>
+                        <Portal>
+                          <MenuList zIndex={1400}>
+                            <MenuItem
+                              icon={<ViewIcon />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewCampaign(campaign);
+                              }}
+                            >
+                              View Details
+                            </MenuItem>
+                            <MenuItem
+                              icon={<EditIcon />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log("Edit campaign:", campaign.name);
+                              }}
+                            >
+                              Edit
+                            </MenuItem>
+                            <MenuItem
+                              icon={<DeleteIcon />}
+                              color="red.500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCampaign(campaign);
+                              }}
+                            >
+                              Delete
+                            </MenuItem>
+                          </MenuList>
+                        </Portal>
                       </Menu>
                     </HStack>
                   </VStack>
@@ -667,9 +669,9 @@ The FitZone Team`,
 
       {/* Create Campaign Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Create New Campaign</ModalHeader>
+        <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0,0,0,0.3)" />
+        <ModalContent borderRadius="20px" border="1.5px solid" borderColor={useColorModeValue("white", "whiteAlpha.300")}>
+          <ModalHeader color={textColor}>Create New Campaign</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <VStack spacing={6} align="stretch">
@@ -754,10 +756,28 @@ The FitZone Team`,
                 <Button variant="outline" onClick={handleSaveDraft}>
                   Save Draft
                 </Button>
-                <Button variant="outline" colorScheme="blue" onClick={handleSchedule}>
-                  Schedule
-                </Button>
-                <Button colorScheme="teal" onClick={handleCreateCampaign}>
+                <Button
+                  variant="outline"
+                  colorScheme="blue"
+                  _focus={{ boxShadow: "0 0 0 2px rgba(66, 153, 225, 0.6)" }}
+                  onClick={handleSchedule}
+                >Schedule</Button>
+                <Button
+                  onClick={handleCreateCampaign}
+                  bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
+                  backgroundImage="linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)"
+                  color="white"
+                  _hover={{ bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)" }}
+                  _active={{ bg: "brand.600" }}
+                  _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
+                  _disabled={{
+                    opacity: 0.7,
+                    cursor: "not-allowed",
+                    bg: "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)",
+                    backgroundImage: "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)",
+                    color: "white"
+                  }}
+                >
                   Send Now
                 </Button>
               </HStack>

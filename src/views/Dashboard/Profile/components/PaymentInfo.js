@@ -162,54 +162,84 @@ const PaymentInfo = ({ customer }) => {
           
           <VStack spacing={3} align="stretch" display={{ base: "flex", md: "none" }}>
             <Button
-              colorScheme="green"
               leftIcon={<FaCheckCircle />}
               size="md"
               isDisabled={!isPaymentOverdue(customer.nextDueDate)}
+              bg="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
+              backgroundImage="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
+              color="white"
+              _hover={{ bg: "linear-gradient(90deg, #9F7A1A 0%, #775C08 100%)" }}
+              _active={{ bg: "#8A6A0A" }}
+              _disabled={{ opacity: 0.8, bg: "linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)", color: "white" }}
             >
               Mark as Paid
             </Button>
             <Button
-              colorScheme="teal"
               leftIcon={<FaCreditCard />}
               size="md"
+              bg="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
+              backgroundImage="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
+              color="white"
+              _hover={{ bg: "linear-gradient(90deg, #2AA396 0%, #276B6C 100%)" }}
+              _active={{ bg: "#2C7A7B" }}
             >
               Process Payment
             </Button>
             <Button
-              colorScheme="orange"
               leftIcon={<FaExclamationTriangle />}
               size="md"
               variant="outline"
+              borderColor="#DD6B20"
+              color="#DD6B20"
+              _hover={{ bg: "rgba(221,107,32,0.08)", borderColor: "#DD6B20" }}
             >
               Send Reminder
             </Button>
           </VStack>
           
-          <HStack spacing={3} justify="space-between" display={{ base: "none", md: "flex" }}>
+          <HStack spacing={3} w="100%" display={{ base: "none", md: "flex" }}>
             <Button
-              colorScheme="green"
               leftIcon={<FaCheckCircle />}
               size="md"
               flex={1}
+              minW={0}
               isDisabled={!isPaymentOverdue(customer.nextDueDate)}
+              bg="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
+              backgroundImage="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
+              color="white"
+              _hover={{ bg: "linear-gradient(90deg, #9F7A1A 0%, #775C08 100%)" }}
+              _active={{ bg: "#8A6A0A" }}
+              _focus={{ boxShadow: "0 0 0 2px rgba(184, 138, 30, 0.4)" }}
+              _disabled={{
+                opacity: 0.7,
+                cursor: "not-allowed",
+                bg: "linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)",
+                backgroundImage: "linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)",
+                color: "white"
+              }}
             >
               Mark as Paid
             </Button>
             <Button
-              colorScheme="teal"
               leftIcon={<FaCreditCard />}
               size="md"
               flex={1}
+              minW={0}
+              bg="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
+              color="white"
+              _hover={{ bg: "linear-gradient(90deg, #2AA396 0%, #276B6C 100%)" }}
             >
               Process Payment
             </Button>
             <Button
-              colorScheme="orange"
               leftIcon={<FaExclamationTriangle />}
               size="md"
               variant="outline"
               flex={1}
+              minW={0}
+              borderColor="#DD6B20"
+              color="#DD6B20"
+              _hover={{ bg: useColorModeValue("rgba(221,107,32,0.08)", "rgba(221,107,32,0.16)"), borderColor: "#DD6B20" }}
             >
               Send Reminder
             </Button>

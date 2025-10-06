@@ -739,17 +739,29 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
             Cancel
           </Button>
           <Button
+            variant="solid"
             onClick={handleSubmit}
-            colorScheme="teal"
             borderRadius="12px"
             px={8}
             py={3}
             fontSize="md"
             fontWeight="medium"
             bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
+            backgroundImage="linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)"
             color="white"
             _hover={{
               bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)",
+              color: "white"
+            }}
+            _active={{
+              bg: "brand.600"
+            }}
+            _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
+            _disabled={{
+              opacity: 0.7,
+              cursor: "not-allowed",
+              bg: "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)",
+              backgroundImage: "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)",
               color: "white"
             }}
           >

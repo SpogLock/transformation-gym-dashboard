@@ -360,8 +360,8 @@ function SalesAnalytics() {
 
             {/* Custom Date Picker Modal */}
             <Modal isOpen={showCustomDatePicker} onClose={() => setShowCustomDatePicker(false)}>
-              <ModalOverlay />
-              <ModalContent>
+              <ModalOverlay backdropFilter="blur(8px)" bg="rgba(0,0,0,0.35)" />
+              <ModalContent borderRadius="20px" border="1.5px solid" borderColor={useColorModeValue("white", "whiteAlpha.300")}>
                 <ModalHeader color={textColor}>Select Custom Date Range</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
@@ -412,10 +412,11 @@ function SalesAnalytics() {
                       Cancel
                     </Button>
                     <Button
-                      colorScheme="teal"
-                      bg="brand.500"
+                      bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
                       color="white"
-                      _hover={{ bg: "#2C7A7B" }}
+                      _hover={{ bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)" }}
+                      _active={{ bg: "brand.600" }}
+                      _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
                       onClick={handleCustomDateSelect}
                       isDisabled={!customDateRange.startDate || !customDateRange.endDate}
                     >

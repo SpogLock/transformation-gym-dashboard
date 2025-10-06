@@ -453,7 +453,7 @@ const Authors = ({ title, captions, data }) => {
             </Badge>
           </VStack>
         </HStack>
-        <Menu>
+        <Menu placement="bottom-end">
           <MenuButton
             as={IconButton}
             icon={<ChevronDownIcon />}
@@ -468,29 +468,30 @@ const Authors = ({ title, captions, data }) => {
               zIndex: 1000
             }}
           />
-          <MenuList zIndex={99999} borderRadius="lg" overflow="hidden" data-menu="true">
-            <MenuItem 
-              onClick={() => console.log("Edit customer:", customer.name)}
-              borderRadius={0}
-              _first={{
-                borderTopRadius: "lg"
-              }}
-              _last={{
-                borderBottomRadius: "lg"
-              }}
-            >
-              Edit Customer
-            </MenuItem>
-            <MenuItem 
-              onClick={() => console.log("View details:", customer.name)}
-              borderRadius={0}
-              _last={{
-                borderBottomRadius: "lg"
-              }}
-            >
-              View Details
-            </MenuItem>
-          </MenuList>
+          <Portal>
+            <MenuList zIndex={1400} borderRadius="lg" overflow="hidden" data-menu="true">
+              <MenuItem 
+                onClick={() => console.log("Edit customer:", customer.name)}
+                borderRadius={0}
+                _first={{
+                  borderTopRadius: "lg"
+                }}
+              >
+                Edit Customer
+              </MenuItem>
+              <MenuItem 
+                onClick={() => console.log("View details:", customer.name)}
+              >
+                View Details
+              </MenuItem>
+              <MenuItem 
+                onClick={() => console.log("Delete customer:", customer.name)}
+                color="red.500"
+              >
+                Delete
+              </MenuItem>
+            </MenuList>
+          </Portal>
         </Menu>
       </Flex>
 
