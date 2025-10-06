@@ -123,7 +123,8 @@ const Header = ({
           <Flex
             direction={{ sm: "column", lg: "row" }}
             w={{ sm: "100%", md: "50%", lg: "auto" }}
-            gap={4}>
+            gap={4}
+          >
             {/* Desktop Quick Action Buttons - Hidden on mobile */}
             <HStack spacing={2} mr={4} display={{ sm: "none", md: "flex" }}>
               <Button
@@ -147,41 +148,47 @@ const Header = ({
             </HStack>
 
             {/* Tab Buttons */}
-            {tabs.map((tab, index) => (
-              <Button 
-                key={index}
-                p='0px' 
-                bg='transparent' 
-                _hover={{ bg: "none" }}
-                onClick={() => onTabChange(tab.name)}
-              >
-                <Flex
-                  align='center'
-                  w={{ sm: "100%", lg: "135px" }}
-                  bg={activeTab === tab.name ? 'hsla(0,0%,100%,.5)' : 'hsla(0,0%,100%,.3)'}
-                  borderRadius='15px'
-                  justifyContent='center'
-                  py='10px'
-                  mx={{ lg: index > 0 ? "1rem" : "0" }}
-                  boxShadow={activeTab === tab.name ? 'inset 0 0 1px 1px hsl(0deg 0% 100% / 90%), 0 20px 27px 0 rgb(0 0 0 / 5%)' : 'none'}
-                  border={activeTab === tab.name ? '1px solid gray.200' : 'none'}
-                  cursor='pointer'
-                  transition='all 0.2s ease-in-out'
-                  _hover={{
-                    bg: 'hsla(0,0%,100%,.4)',
-                    transform: 'translateY(-2px)'
-                  }}>
-                  {tab.icon}
-                  <Text
-                    fontSize='xs'
-                    color={textColor}
-                    fontWeight='bold'
-                    ms='6px'>
-                    {tab.name}
-                  </Text>
-                </Flex>
-              </Button>
-            ))}
+            <Flex display={{ base: "grid", md: "flex" }} gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(2, 1fr)" }} gap={{ base: 3, sm: 3 }} w={{ base: "100%", md: "auto" }}>
+              {tabs.map((tab, index) => (
+                <Button 
+                  key={index}
+                  p='0px' 
+                  bg='transparent' 
+                  _hover={{ bg: "none" }}
+                  onClick={() => onTabChange(tab.name)}
+                  w={{ base: "100%", md: "auto" }}
+                  sx={{ gridColumn: { base: index === 2 ? '1 / span 2' : 'auto' } }}
+                >
+                  <Flex
+                    align='center'
+                    w={{ base: "100%", lg: "135px" }}
+                    bg={activeTab === tab.name ? 'hsla(0,0%,100%,.5)' : 'hsla(0,0%,100%,.3)'}
+                    borderRadius={{ base: '10px', md: '15px' }}
+                    justifyContent='center'
+                    py={{ base: '10px', md: '10px' }}
+                    mx={{ lg: index > 0 ? "1rem" : "0" }}
+                    boxShadow={activeTab === tab.name ? 'inset 0 0 1px 1px hsl(0deg 0% 100% / 90%), 0 20px 27px 0 rgb(0 0 0 / 5%)' : 'none'}
+                    border={activeTab === tab.name ? '1px solid gray.200' : 'none'}
+                    cursor='pointer'
+                    transition='all 0.2s ease-in-out'
+                    _hover={{
+                      bg: 'hsla(0,0%,100%,.4)',
+                      transform: 'translateY(-2px)'
+                    }}>
+                    {tab.icon}
+                    <Text
+                      fontSize={{ base: '10px', md: 'xs' }}
+                      color={textColor}
+                      fontWeight='bold'
+                      ms='6px'
+                      whiteSpace='nowrap'
+                    >
+                      {tab.name}
+                    </Text>
+                  </Flex>
+                </Button>
+              ))}
+            </Flex>
           </Flex>
         </Flex>
       </Box>

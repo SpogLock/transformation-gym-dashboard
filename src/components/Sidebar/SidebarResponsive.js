@@ -14,7 +14,8 @@ import {
     Stack,
     Text,
     useColorModeValue,
-    useDisclosure
+    useDisclosure,
+    Image
 } from "@chakra-ui/react";
 import IconBox from "components/Icons/IconBox";
 import { CreativeTimLogo } from "components/Icons/Icons";
@@ -41,7 +42,7 @@ function SidebarResponsive(props) {
       const activeColor = useColorModeValue("gray.700", "white");
       const inactiveColor = useColorModeValue("gray.400", "gray.400");
   
-      return routes.map((prop, key) => {
+      return routes.filter((r)=>!r.hidden).map((prop, key) => {
         if (prop.redirect) {
           return null;
         }
@@ -191,20 +192,14 @@ function SidebarResponsive(props) {
     var brand = (
       <Box pt={"35px"} mb="8px">
         <Link
-          href={`${process.env.PUBLIC_URL}/#/`}
-          target="_blank"
+          href={`${process.env.PUBLIC_URL}/#/admin/dashboard`}
           display="flex"
           lineHeight="100%"
           mb="30px"
-          fontWeight="bold"
           justifyContent="center"
           alignItems="center"
-          fontSize="11px"
         >
-          <CreativeTimLogo w="32px" h="32px" me="10px" />
-          <Text fontSize="sm" mt="3px">
-            {logoText}
-          </Text>
+          <Image src={require("assets/img/logo.jpg")} alt="Transformations Fitness Studio" borderRadius="12px" boxSize="56px" objectFit="cover" />
         </Link>
         <Separator></Separator>
       </Box>
