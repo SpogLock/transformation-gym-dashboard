@@ -18,6 +18,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { HashRouter, Route, Switch, Redirect } from "react-router-dom";
+import logoFavicon from "assets/img/logo.jpg";
 
 import AuthLayout from "layouts/Auth.js";
 import AdminLayout from "layouts/Admin.js";
@@ -34,3 +35,20 @@ ReactDOM.render(
   </HashRouter>,
   document.getElementById("root")
 );
+
+// Set favicon to brand logo at runtime
+(() => {
+  try {
+    const head = document.head || document.getElementsByTagName("head")[0];
+    let link = document.querySelector("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("rel", "icon");
+      head.appendChild(link);
+    }
+    link.setAttribute("type", "image/jpeg");
+    link.setAttribute("href", logoFavicon);
+  } catch (e) {
+    // no-op
+  }
+})();

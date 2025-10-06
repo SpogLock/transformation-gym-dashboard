@@ -6,7 +6,8 @@ import {
     Link,
     Stack,
     Text,
-    useColorModeValue
+    useColorModeValue,
+    Image
 } from "@chakra-ui/react";
 import IconBox from "components/Icons/IconBox";
 import { CreativeTimLogo } from "components/Icons/Icons";
@@ -180,19 +181,14 @@ const SidebarContent = ({ logoText, routes }) => {
     <>
         <Box pt={"25px"} mb="12px">
       <Link
-F        href={`${process.env.PUBLIC_URL}/#/`}
-        target="_blank"
+        href={`${process.env.PUBLIC_URL}/#/admin/dashboard`}
         display="flex"
         lineHeight="100%"
         mb="30px"
-        fontWeight="bold"
         justifyContent="center"
         alignItems="center"
-        fontSize="11px"
       >
-        <Text fontSize="sm" mt="3px">
-          {logoText}
-        </Text>
+        <Image src={require("assets/img/logo.jpg")} alt="Transformations Fitness Studio" borderRadius="12px" boxSize="56px" objectFit="cover" />
       </Link>
       <Separator></Separator>
     </Box>

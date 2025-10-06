@@ -8,6 +8,8 @@ import Invoices from "views/Dashboard/Invoices";
 import ProductProfile from "views/Dashboard/ProductProfile";
 import InvoiceDetail from "views/Dashboard/InvoiceDetail";
 import EmailMarketing from "views/Dashboard/EmailMarketing";
+import SignIn from "views/Auth/SignIn.js";
+import SignUp from "views/Auth/SignUp.js";
 import Billing from "views/Dashboard/Billing";
 import RTLPage from "views/Dashboard/RTL";
 import Profile from "views/Dashboard/Profile";
@@ -28,6 +30,21 @@ import { SettingsIcon, ViewIcon, AttachmentIcon, CopyIcon, EmailIcon } from "@ch
 import { FaBoxes, FaCashRegister } from "react-icons/fa";
 
 var dashRoutes = [
+  // Auth routes (not shown in sidebar)
+  {
+    path: "/signin",
+    name: "Sign In",
+    component: SignIn,
+    layout: "/auth",
+    hidden: true,
+  },
+  {
+    path: "/signup",
+    name: "Sign Up",
+    component: SignUp,
+    layout: "/auth",
+    hidden: true,
+  },
   {
     path: "/dashboard",
     name: "Dashboard",
