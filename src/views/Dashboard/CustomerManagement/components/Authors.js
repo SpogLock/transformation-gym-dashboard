@@ -38,6 +38,7 @@ import {
   PopoverBody,
   Select,
   Checkbox,
+  Avatar,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, PhoneIcon, EmailIcon, StarIcon, CloseIcon, SettingsIcon, HamburgerIcon, AttachmentIcon, DownloadIcon, AddIcon } from "@chakra-ui/icons";
 // Custom components
@@ -46,9 +47,14 @@ import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import StockTableRow from "components/Tables/StockTableRow";
 import AddCustomerModal from "components/Modals/AddCustomerModal";
-import React, { useState } from "react";
+import EditCustomerModal from "components/Modals/EditCustomerModal";
+import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { useSearch } from "contexts/SearchContext";
+import { getCustomers, createCustomer, uploadCustomerProfilePicture } from "services/customerService";
+import { API_BASE_URL } from "services/api";
+import { useToast } from "@chakra-ui/react";
+import EmptyState from "components/EmptyState/EmptyState";
 
 
 const Authors = ({ title, captions, data }) => {
@@ -75,119 +81,184 @@ const Authors = ({ title, captions, data }) => {
   };
   
   // Customer management data
-  const [stockData, setStockData] = useState([
-    {
-      id: 1,
-      picture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      memberName: "Asim Khan",
-      memberType: "New",
-      mobileNo: "+92 321 2345678",
-      email: "asim@gmail.com",
-      address: "House no. 123, Street no. 123, Lahore",
-      registrationDate: "2024-01-15",
-      membershipStatus: "Active",
-      trainerRequired: "Yes",
-      customerPlan: "Premium",
-      customerWeight: "75 kg",
-      customerAge: "28",
-      monthlyFee: "₨4,500",
-      feePaidDate: "2024-01-15",
-      nextDueDate: "2024-02-15"
-    },
-    {
-      id: 2,
-      picture: "https://images.unsplash.com/photo-1552699611-e2c208d5d9cf?q=80&w=1616&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      memberName: "Fatima Ali",
-      memberType: "Old",
-      mobileNo: "+92 300 1234567",
-      email: "fatima@yahoo.com",
-      address: "Apartment 45, Block 7, Karachi",
-      registrationDate: "2024-01-20",
-      membershipStatus: "Active",
-      trainerRequired: "No",
-      customerPlan: "Basic",
-      customerWeight: "65 kg",
-      customerAge: "25",
-      monthlyFee: "₨3,000",
-      feePaidDate: "2023-12-20",
-      nextDueDate: "2024-01-20"
-    },
-    {
-      id: 3,
-      picture: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      memberName: "Ahmed Hassan",
-      memberType: "Old",
-      mobileNo: "+92 333 9876543",
-      email: "ahmed@hotmail.com",
-      address: "Villa 12, Phase 5, Islamabad",
-      registrationDate: "2024-01-18",
-      membershipStatus: "Inactive",
-      trainerRequired: "Yes",
-      customerPlan: "Standard",
-      customerWeight: "80 kg",
-      customerAge: "32",
-      monthlyFee: "₨3,500",
-      feePaidDate: "2023-11-18",
-      nextDueDate: "2023-12-18"
-    },
-    {
-      id: 4,
-      picture: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      memberName: "Sara Ahmed",
-      memberType: "New",
-      mobileNo: "+92 301 4567890",
-      email: "sara@gmail.com",
-      address: "Flat 8, Building 3, Peshawar",
-      registrationDate: "2024-01-22",
-      membershipStatus: "Active",
-      trainerRequired: "Yes",
-      customerPlan: "Premium",
-      customerWeight: "60 kg",
-      customerAge: "26",
-      monthlyFee: "₨4,500",
-      feePaidDate: "2024-01-22",
-      nextDueDate: "2024-02-22"
-    },
-    {
-      id: 5,
-      picture: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      memberName: "Usman Sheikh",
-      memberType: "Old",
-      mobileNo: "+92 302 7890123",
-      email: "usman@outlook.com",
-      address: "House 67, Street 15, Faisalabad",
-      registrationDate: "2024-01-12",
-      membershipStatus: "Active",
-      trainerRequired: "No",
-      customerPlan: "Basic",
-      customerWeight: "85 kg",
-      customerAge: "35",
-      monthlyFee: "₨3,000",
-      feePaidDate: "2024-01-12",
-      nextDueDate: "2024-02-12"
-    },
-    {
-      id: 6,
-      picture: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-      memberName: "Ayesha Malik",
-      memberType: "New",
-      mobileNo: "+92 304 3210987",
-      email: "ayesha@gmail.com",
-      address: "Apartment 23, Block 2, Multan",
-      registrationDate: "2024-01-25",
-      membershipStatus: "Active",
-      trainerRequired: "Yes",
-      customerPlan: "Standard",
-      customerWeight: "55 kg",
-      customerAge: "23",
-      monthlyFee: "₨4,500",
-      feePaidDate: "2024-01-25",
-      nextDueDate: "2024-02-25"
-    }
-  ]);
+  const [stockData, setStockData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const [editCustomer, setEditCustomer] = useState(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const handleAddCustomer = (newCustomer) => {
-    setStockData(prev => [...prev, newCustomer]);
+  const mapApiCustomerToRow = (c) => {
+    const toTitle = (val) => {
+      if (!val || typeof val !== 'string') return '';
+      return val.charAt(0).toUpperCase() + val.slice(1);
+    };
+    const normalizeImageUrl = (url) => {
+      if (url === null || url === undefined) return undefined;
+      if (typeof url !== 'string') return undefined;
+      const trimmed = url.trim();
+      if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return undefined;
+      if (/^https?:\/\//i.test(trimmed)) {
+        // Replace localhost with API host for consistency if needed
+        try {
+          const apiRoot = API_BASE_URL.replace(/\/$/, '').replace(/\/api\/?$/, '');
+          return trimmed.replace('http://localhost', apiRoot).replace('https://localhost', apiRoot);
+        } catch (_) {
+          return trimmed;
+        }
+      }
+      // Relative path from backend (e.g., /storage/..)
+      const apiRoot = API_BASE_URL.replace(/\/$/, '').replace(/\/api\/?$/, '');
+      return `${apiRoot}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
+    };
+    const rawStatus = ((c.status_display || c.status || "") + "").trim();
+    const statusNormalized = rawStatus.toLowerCase();
+    const statusDisplay = rawStatus
+      ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase()
+      : "";
+    return {
+      id: c.id,
+      picture: normalizeImageUrl(c.profile_picture_url),
+      memberName: c.name,
+      memberType: c.member_type_display || c.type_display || toTitle(c.member_type) || toTitle(c.type) || "Unknown",
+      membershipStatus: statusDisplay,
+      mobileNo: c.mobile_number || "",
+      email: c.email || "",
+      address: c.address || "",
+      registrationDate: (c.created_at || '').split('T')[0] || '',
+      trainerRequired: c.has_trainer ? (c.trainer_name ? `Yes` : 'Yes') : 'No',
+      customerPlan: c.plan_display || c.plan || '',
+      customerWeight: c.weight ? `${parseFloat(c.weight).toFixed(0)} kg` : '',
+      customerAge: c.age ? `${c.age}` : '',
+      monthlyFee: c.monthly_fee ? `₨${parseInt(c.monthly_fee).toLocaleString()}` : '',
+      feePaidDate: c.last_payment_date || '',
+      nextDueDate: c.next_due_date || '',
+    };
+  };
+
+  const loadCustomers = async () => {
+    setLoading(true);
+    try {
+      const apiFilters = {};
+      if (filters.membershipStatus) apiFilters.status = filters.membershipStatus.toLowerCase();
+      if (filters.customerPlan) apiFilters.plan = filters.customerPlan.toLowerCase();
+      if (filters.feeStatus) apiFilters.subscription_status = filters.feeStatus.toLowerCase();
+      if (filters.trainerRequired) apiFilters.has_trainer = filters.trainerRequired === 'Yes' ? 'true' : 'false';
+      if (searchQuery) apiFilters.search = searchQuery;
+
+      const data = await getCustomers(apiFilters);
+      const rows = (data.customers || []).map(mapApiCustomerToRow);
+      setStockData(rows);
+    } catch (error) {
+      toast({
+        title: "Failed to load customers",
+        description: error.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+        position: "top-right",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, [searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired]);
+
+  const handleAddCustomer = async (newCustomer) => {
+    // Map UI fields to API payload where possible
+    const payload = {
+      name: newCustomer.memberName,
+      email: newCustomer.email,
+      mobile_number: newCustomer.mobileNo,
+      address: newCustomer.address,
+      type: (newCustomer.memberType || '').toLowerCase(),
+      status: (newCustomer.membershipStatus || '').toLowerCase(),
+      plan: (newCustomer.customerPlan || '').toLowerCase(),
+      monthly_fee: newCustomer.monthlyFee ? parseInt((newCustomer.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
+      has_trainer: newCustomer.trainerRequired === 'Yes',
+      last_payment_date: newCustomer.feePaidDate,
+      next_due_date: newCustomer.nextDueDate,
+      age: newCustomer.customerAge ? parseInt((newCustomer.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
+      weight: newCustomer.customerWeight ? parseFloat((newCustomer.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
+      // Ignore fields not present in UI as requested
+    };
+
+    try {
+      const created = await createCustomer(payload);
+      // If user selected a file in modal, try uploading it now using new id
+      if (newCustomer._selectedFile && created?.id) {
+        try {
+          await uploadCustomerProfilePicture(created.id, newCustomer._selectedFile);
+        } catch (e) {
+          // Non-fatal; image upload failure shouldn't block customer creation
+        }
+      }
+      toast({
+        title: "Customer added",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+        position: "top-right",
+      });
+      // Refresh list from API to stay in sync
+      loadCustomers();
+    } catch (error) {
+      toast({
+        title: "Failed to add customer",
+        description: error.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+        position: "top-right",
+      });
+      // Fallback: keep local add if API fails? We skip to avoid drift
+    }
+  };
+
+  const handleOpenEdit = (customer) => {
+    setEditCustomer(customer);
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = async (formData, selectedFile) => {
+    if (!editCustomer) return;
+    try {
+      const updatePayload = {
+        name: formData.memberName,
+        email: formData.email,
+        mobile_number: formData.mobileNo,
+        address: formData.address,
+        type: (formData.memberType || '').toLowerCase(),
+        status: (formData.membershipStatus || '').toLowerCase(),
+        plan: (formData.customerPlan || '').toLowerCase(),
+        monthly_fee: formData.monthlyFee ? parseInt((formData.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
+        has_trainer: formData.trainerRequired === 'Yes',
+        age: formData.customerAge ? parseInt((formData.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
+        weight: formData.customerWeight ? parseFloat((formData.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
+      };
+      await (await import('services/customerService')).updateCustomer(editCustomer.id, updatePayload);
+      if (selectedFile) {
+        try { await uploadCustomerProfilePicture(editCustomer.id, selectedFile); } catch (_) {}
+      }
+      setIsEditOpen(false);
+      setEditCustomer(null);
+      toast({ title: 'Customer updated', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
+      loadCustomers();
+    } catch (error) {
+      toast({ title: 'Update failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
+    }
+  };
+
+  const handleDelete = async (customer) => {
+    try {
+      await (await import('services/customerService')).deleteCustomer(customer.id);
+      toast({ title: 'Customer deleted', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
+      loadCustomers();
+    } catch (error) {
+      toast({ title: 'Delete failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
+    }
   };
 
   // Check if customer fee is overdue
@@ -359,20 +430,14 @@ const Authors = ({ title, captions, data }) => {
               borderColor="brand.300"
               boxShadow="0 8px 20px rgba(0, 0, 0, 0.2)"
             >
-              <Image
-                src={hoveredCustomer.picture}
-                alt={hoveredCustomer.memberName}
-                w="100%"
-                h="100%"
-                objectFit="cover"
-              />
+              <Avatar name={hoveredCustomer.memberName} src={hoveredCustomer.picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
             </Box>
             <VStack spacing={2} align="center">
               <Text fontSize="xl" fontWeight="bold" color={cardTextColor} textAlign="center">
                 {hoveredCustomer.memberName}
               </Text>
               <Badge
-                colorScheme={hoveredCustomer.membershipStatus === "Active" ? "green" : "red"}
+                colorScheme={(hoveredCustomer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
                 variant="subtle"
                 px={4}
                 py={2}
@@ -380,7 +445,7 @@ const Authors = ({ title, captions, data }) => {
                 fontSize="sm"
                 fontWeight="semibold"
               >
-                {hoveredCustomer.membershipStatus}
+                {(hoveredCustomer.membershipStatus || '').charAt(0).toUpperCase() + (hoveredCustomer.membershipStatus || '').slice(1)}
               </Badge>
               <Text fontSize="md" color={cardLabelColor} textAlign="center" fontWeight="medium">
                 {hoveredCustomer.customerPlan} Plan
@@ -412,44 +477,36 @@ const Authors = ({ title, captions, data }) => {
       {/* Header with Picture, Name and Status */}
       <Flex justifyContent="space-between" alignItems="center" mb={3}>
         <HStack spacing={3}>
-          <Box
-            w="50px"
-            h="50px"
-            borderRadius="full"
-            overflow="hidden"
-            border="2px solid"
-            borderColor={borderColor}
-            onMouseEnter={(e) => handleMouseEnter(customer, e)}
-            onMouseLeave={handleMouseLeave}
-            cursor="pointer"
-            _hover={{
-              borderColor: "brand.300",
-              transform: "scale(1.1)",
-            }}
-            transition="all 0.2s ease-in-out"
-          >
-            <img
-              src={customer.picture}
-              alt={customer.memberName}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover"
+            <Box
+              w="50px"
+              h="50px"
+              borderRadius="full"
+              overflow="hidden"
+              border="2px solid"
+              borderColor={borderColor}
+              onMouseEnter={(e) => handleMouseEnter(customer, e)}
+              onMouseLeave={handleMouseLeave}
+              cursor="pointer"
+              _hover={{
+                borderColor: "brand.300",
+                transform: "scale(1.1)",
               }}
-            />
-          </Box>
+              transition="all 0.2s ease-in-out"
+            >
+              <Avatar name={customer.memberName} src={customer.picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
+            </Box>
           <VStack align="start" spacing={1}>
             <Text fontSize="lg" fontWeight="bold" color={cardTextColor}>
               {customer.memberName}
             </Text>
             <Badge
-              colorScheme={customer.membershipStatus === "Active" ? "green" : "red"}
+              colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
               borderRadius="full"
               px={3}
               py={1}
               fontSize="xs"
             >
-              {customer.membershipStatus}
+              {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
             </Badge>
           </VStack>
         </HStack>
@@ -657,7 +714,15 @@ const Authors = ({ title, captions, data }) => {
         </Flex>
       </CardHeader>
       <CardBody>
-        {isMobile ? (
+        {stockData.length === 0 ? (
+          <EmptyState
+            title="No customers found"
+            description="Try adjusting filters or add a new customer to get started."
+            actionLabel="Add Customer"
+            onAction={onOpen}
+            fullHeight
+          />
+        ) : isMobile ? (
            // Mobile List View - Minimal Info
            <VStack spacing={3} align="stretch" w="100%">
              {filteredCustomers.map((customer, index) => (
@@ -720,16 +785,17 @@ const Authors = ({ title, captions, data }) => {
                          transform: "scale(1.05)",
                        }}
                        transition="all 0.2s ease-in-out"
-                     >
-                       <img
-                         src={customer.picture}
-                         alt={customer.memberName}
-                         style={{
-                           width: "100%",
-                           height: "100%",
-                           objectFit: "cover"
-                         }}
-                       />
+                    >
+                      <Avatar
+                        name={customer.memberName}
+                        src={customer.picture || undefined}
+                        w="100%"
+                        h="100%"
+                        bg="brand.300"
+                        color="white"
+                        fontWeight="bold"
+                        title={customer.memberName}
+                      />
                      </Box>
                      <VStack align="start" spacing={0}>
                        <Text fontSize="md" fontWeight="bold" color={textColor}>
@@ -745,7 +811,7 @@ const Authors = ({ title, captions, data }) => {
                    </HStack>
                           <VStack align="end" spacing={1}>
                             <Badge
-                              colorScheme={customer.membershipStatus === "Active" ? "green" : "red"}
+                              colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
                               variant="subtle"
                               px={2}
                               py={1}
@@ -753,7 +819,7 @@ const Authors = ({ title, captions, data }) => {
                               fontSize="xs"
                               fontWeight="semibold"
                             >
-                              {customer.membershipStatus}
+                              {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
                             </Badge>
                             <Text fontSize="xs" color={cardLabelColor}>
                               {customer.customerPlan}
@@ -831,14 +897,15 @@ const Authors = ({ title, captions, data }) => {
                        }}
                        transition="all 0.2s ease-in-out"
                      >
-                       <img
+                       <Avatar
+                         name={customer.memberName}
                          src={customer.picture}
-                         alt={customer.memberName}
-                         style={{
-                           width: "100%",
-                           height: "100%",
-                           objectFit: "cover"
-                         }}
+                         w="100%"
+                         h="100%"
+                         bg="brand.300"
+                         color="white"
+                         fontWeight="bold"
+                         title={customer.memberName}
                        />
                      </Box>
                      <VStack align="start" spacing={1}>
@@ -850,8 +917,8 @@ const Authors = ({ title, captions, data }) => {
                        </Text>
                      </VStack>
                    </HStack>
-                   <Badge
-                     colorScheme={customer.membershipStatus === "Active" ? "green" : "red"}
+                  <Badge
+                    colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
                      variant="subtle"
                      px={3}
                      py={1}
@@ -859,7 +926,7 @@ const Authors = ({ title, captions, data }) => {
                      fontSize="xs"
                      fontWeight="semibold"
                    >
-                     {customer.membershipStatus}
+                    {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
                    </Badge>
                  </Flex>
 
@@ -1022,6 +1089,8 @@ const Authors = ({ title, captions, data }) => {
                             onMouseEnter={(e) => handleMouseEnter(row, e)}
                             onMouseLeave={handleMouseLeave}
                             onClick={() => handleCustomerClick(row)}
+                            onEdit={() => handleOpenEdit(row)}
+                            onDelete={() => handleDelete(row)}
                           />
                 );
               })}
@@ -1034,6 +1103,12 @@ const Authors = ({ title, captions, data }) => {
         isOpen={isOpen}
         onClose={onClose}
         onAddCustomer={handleAddCustomer}
+      />
+      <EditCustomerModal
+        isOpen={isEditOpen}
+        onClose={() => { setIsEditOpen(false); setEditCustomer(null); }}
+        customer={editCustomer}
+        onSave={handleSaveEdit}
       />
       
       {/* Hover Modal */}

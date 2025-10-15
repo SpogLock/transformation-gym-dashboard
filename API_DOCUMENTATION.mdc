@@ -1,0 +1,1565 @@
+# POS Dashboard Backend API Documentation
+
+## Base URL
+```
+http://127.0.0.1:8000/api
+```
+
+## Authentication
+All protected endpoints require a Bearer token in the Authorization header:
+```
+Authorization: Bearer {your_token_here}
+```
+
+## Response Format
+All API responses follow this consistent format:
+
+### Success Response
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": {
+    // Response data here
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errors": {
+    // Validation errors (if any)
+  }
+}
+```
+
+---
+
+## Authentication Endpoints
+
+### 1. Register User
+**POST** `/register`
+
+Creates a new user account.
+
+#### Request Body
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "password_confirmation": "password123",
+  "role": "staff" // Optional: "admin" or "staff" (defaults to "staff")
+}
+```
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "staff",
+      "role_display": "Staff",
+      "created_at": "2025-01-15T10:30:00.000000Z"
+    },
+    "token": "1|abcdef123456...",
+    "token_type": "Bearer"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const registerUser = async (userData) => {
+  const response = await fetch('http://127.0.0.1:8000/api/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(userData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    // Store token in localStorage or state management
+    localStorage.setItem('auth_token', data.data.token);
+    return data.data.user;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 2. Login User
+**POST** `/login`
+
+Authenticates a user and returns an access token.
+
+#### Request Body
+```json
+{
+  "email": "john@example.com",
+  "password": "password123",
+  "remember_me": true // Optional: extends token expiration to 30 days
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "staff",
+      "role_display": "Staff",
+      "remember_me": true,
+      "last_login": "2025-01-15T10:30:00.000000Z"
+    },
+    "token": "1|abcdef123456...",
+    "token_type": "Bearer",
+    "expires_in": 2592000 // Token expiration in seconds (30 days if remember_me=true, 1 day otherwise)
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const loginUser = async (credentials) => {
+  const response = await fetch('http://127.0.0.1:8000/api/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(credentials)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    // Store token and user data
+    localStorage.setItem('auth_token', data.data.token);
+    localStorage.setItem('user', JSON.stringify(data.data.user));
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 3. Logout User
+**POST** `/logout`
+
+Invalidates the current access token.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Logout successful"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const logoutUser = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/logout', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    // Clear stored authentication data
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+  }
+  
+  return data;
+};
+```
+
+---
+
+### 4. Get User Profile
+**GET** `/profile`
+
+Retrieves the authenticated user's profile information.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "staff",
+      "role_display": "Staff",
+      "remember_me": true,
+      "created_at": "2025-01-15T10:30:00.000000Z",
+      "updated_at": "2025-01-15T10:30:00.000000Z"
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getUserProfile = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/profile', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.user;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 5. Update User Profile
+**PUT** `/profile`
+
+Updates the authenticated user's profile information.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Request Body
+```json
+{
+  "name": "John Smith", // Optional
+  "email": "johnsmith@example.com", // Optional
+  "remember_me": false // Optional
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Smith",
+      "email": "johnsmith@example.com",
+      "role": "staff",
+      "role_display": "Staff",
+      "remember_me": false,
+      "updated_at": "2025-01-15T11:00:00.000000Z"
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const updateUserProfile = async (profileData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/profile', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(profileData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    // Update stored user data
+    localStorage.setItem('user', JSON.stringify(data.data.user));
+    return data.data.user;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 6. Change Password
+**POST** `/change-password`
+
+Changes the authenticated user's password.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Request Body
+```json
+{
+  "current_password": "oldpassword123",
+  "password": "newpassword123",
+  "password_confirmation": "newpassword123"
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const changePassword = async (passwordData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/change-password', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(passwordData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.message;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Dashboard Endpoints
+
+### 7. Test Authentication
+**GET** `/user`
+
+Test endpoint to verify authentication is working.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "staff",
+      "role_display": "Staff",
+      "remember_me": true,
+      "created_at": "2025-01-15T10:30:00.000000Z",
+      "updated_at": "2025-01-15T10:30:00.000000Z"
+    },
+    "message": "You are authenticated!"
+  }
+}
+```
+
+---
+
+### 8. POS Dashboard
+**GET** `/dashboard`
+
+Access the main POS dashboard (requires staff or admin role).
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Welcome to POS dashboard!",
+    "user": {
+      // User object here
+    }
+  }
+}
+```
+
+---
+
+### 9. Admin Dashboard
+**GET** `/admin/dashboard`
+
+Access the admin dashboard (requires admin role only).
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Welcome to admin dashboard!",
+    "user": {
+      // User object here
+    }
+  }
+}
+```
+
+---
+
+## Error Handling
+
+### Common HTTP Status Codes
+- `200 OK` - Request successful
+- `201 Created` - Resource created successfully
+- `400 Bad Request` - Invalid request data
+- `401 Unauthorized` - Authentication required or invalid credentials
+- `403 Forbidden` - Insufficient permissions (role-based access)
+- `422 Unprocessable Entity` - Validation errors
+- `500 Internal Server Error` - Server error
+
+### Authentication Errors
+```json
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+```
+
+### Validation Errors
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "email": ["The email field is required."],
+    "password": ["The password field is required."]
+  }
+}
+```
+
+### Authorization Errors
+```json
+{
+  "success": false,
+  "message": "Access denied. Admin role required."
+}
+```
+
+---
+
+## Frontend Integration Tips
+
+### 1. Token Management
+```javascript
+// Store token after login/register
+localStorage.setItem('auth_token', token);
+
+// Include token in requests
+const token = localStorage.getItem('auth_token');
+headers: {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+}
+```
+
+### 2. Role-Based UI
+```javascript
+// Check user role for conditional rendering
+const user = JSON.parse(localStorage.getItem('user'));
+const isAdmin = user?.role === 'admin';
+const isStaff = user?.role === 'staff';
+
+// Show admin-only features
+{isAdmin && <AdminPanel />}
+
+// Show staff/admin features
+{(isStaff || isAdmin) && <POSInterface />}
+```
+
+### 3. Remember Me Feature
+```javascript
+// When logging in, pass remember_me preference
+const loginData = {
+  email: 'user@example.com',
+  password: 'password123',
+  remember_me: rememberMeCheckbox.checked // true = 30 days, false = 1 day
+};
+```
+
+### 4. Error Handling
+```javascript
+const handleApiCall = async (apiFunction) => {
+  try {
+    const result = await apiFunction();
+    return result;
+  } catch (error) {
+    if (error.message.includes('Invalid credentials')) {
+      // Redirect to login
+      redirectToLogin();
+    } else if (error.message.includes('Access denied')) {
+      // Show permission denied message
+      showPermissionDenied();
+    } else {
+      // Show generic error
+      showError(error.message);
+    }
+  }
+};
+```
+
+### 5. Auto-logout on Token Expiry
+```javascript
+// Check token expiry and auto-logout
+const checkTokenExpiry = () => {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return;
+  
+  // You can decode the JWT token to check expiry
+  // Or make a test API call to see if token is still valid
+  fetch('http://127.0.0.1:8000/api/user', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(response => {
+    if (!response.ok) {
+      // Token expired, logout user
+      logoutUser();
+    }
+  });
+};
+
+// Check token validity periodically
+setInterval(checkTokenExpiry, 60000); // Check every minute
+```
+
+---
+
+## User Roles
+
+### Admin Role
+- Full access to all features
+- Can access `/admin/dashboard`
+- Can create other admin users
+- Full CRUD operations on all resources
+
+### Staff Role
+- Access to POS operations
+- Can access `/dashboard`
+- Limited access to certain features
+- Cannot access admin-only endpoints
+
+---
+
+## Customer Management Endpoints
+
+### 10. Get All Customers
+**GET** `/customers`
+
+Retrieves a paginated list of customers with filtering and sorting options.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
+- `type` (optional): Filter by type (`new`, `old`)
+- `plan` (optional): Filter by plan (`basic`, `standard`, `premium`)
+- `subscription_status` (optional): Filter by subscription status (`active`, `overdue`, `paid`, `inactive`)
+- `has_trainer` (optional): Filter by trainer assignment (`true`, `false`)
+- `search` (optional): Search by name, email, or mobile number
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customers": [
+      {
+        "id": 1,
+        "name": "Asim Khan",
+        "email": "asim@gmail.com",
+        "mobile_number": "+92 321 2345678",
+        "address": "House no. 123, Street no. 123, Lahore",
+        "profile_picture_url": null,
+        "type": "new",
+        "type_display": "New",
+        "status": "active",
+        "status_display": "Active",
+        "member_type": "new",
+        "member_type_display": "New",
+        "plan": "premium",
+        "plan_display": "Premium",
+        "monthly_fee": "4500.00",
+        "subscription_status": "overdue",
+        "subscription_status_display": "Overdue",
+        "last_payment_date": "2024-01-15",
+        "next_due_date": "2024-02-15",
+        "overdue_days": 608,
+        "overdue_days_text": "OVERDUE 608 days",
+        "has_trainer": true,
+        "trainer_name": "Ahmed Ali",
+        "trainer_display": "Yes (Ahmed Ali)",
+        "age": 28,
+        "weight": "75.00",
+        "fitness_goals": "Weight Loss",
+        "emergency_contact_phone": "+92 300 1234567",
+        "emergency_contact_name": null,
+        "total_spent": "7650.00",
+        "total_orders": 4,
+        "total_items_purchased": 7,
+        "last_purchase_date": "2024-02-15",
+        "notes": null,
+        "created_at": "2025-01-15T10:30:00.000000Z",
+        "updated_at": "2025-01-15T10:30:00.000000Z"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 1,
+      "per_page": 15,
+      "total": 1,
+      "from": 1,
+      "to": 1
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getCustomers = async (filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage examples:
+// getCustomers({ status: 'active', plan: 'premium' })
+// getCustomers({ search: 'asim', sort_by: 'name', sort_order: 'asc' })
+// getCustomers({ has_trainer: true, per_page: 20 })
+```
+
+---
+
+### 11. Create Customer
+**POST** `/customers`
+
+Creates a new customer record.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Request Body
+```json
+{
+  "name": "Asim Khan",
+  "email": "asim@gmail.com",
+  "mobile_number": "+92 321 2345678",
+  "address": "House no. 123, Street no. 123, Lahore",
+  "profile_picture_url": "https://example.com/profile.jpg",
+  "type": "new",
+  "status": "active",
+  "member_type": "new",
+  "plan": "premium",
+  "monthly_fee": 4500.00,
+  "subscription_status": "active",
+  "last_payment_date": "2024-01-15",
+  "next_due_date": "2024-02-15",
+  "overdue_days": 0,
+  "has_trainer": true,
+  "trainer_name": "Ahmed Ali",
+  "trainer_id": 1,
+  "age": 28,
+  "weight": 75.5,
+  "fitness_goals": "Weight Loss",
+  "emergency_contact_phone": "+92 300 1234567",
+  "emergency_contact_name": "Fatima Khan",
+  "notes": "Regular customer, prefers morning sessions"
+}
+```
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "Customer created successfully",
+  "data": {
+    "customer": {
+      // Customer object with all fields
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const createCustomer = async (customerData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/customers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(customerData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 12. Get Customer Details
+**GET** `/customers/{id}`
+
+Retrieves detailed information about a specific customer.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      // Complete customer object with all fields
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getCustomer = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 13. Update Customer
+**PUT** `/customers/{id}`
+
+Updates an existing customer record.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Request Body
+```json
+{
+  "name": "Asim Khan Updated",
+  "weight": 74.5,
+  "fitness_goals": "Muscle Building",
+  "monthly_fee": 5000.00
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Customer updated successfully",
+  "data": {
+    "customer": {
+      // Updated customer object
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const updateCustomer = async (customerId, updateData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(updateData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 14. Delete Customer
+**DELETE** `/customers/{id}`
+
+Deletes a customer record.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Customer deleted successfully"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const deleteCustomer = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.message;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 15. Get Customer Statistics
+**GET** `/customers-statistics`
+
+Retrieves aggregated statistics about customers.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "total_customers": 150,
+      "active_customers": 120,
+      "new_customers": 45,
+      "overdue_customers": 25,
+      "customers_with_trainers": 80,
+      "premium_customers": 60,
+      "total_revenue": "675000.00",
+      "average_monthly_fee": "4500.00"
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getCustomerStatistics = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/customers-statistics', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.statistics;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 16. Mark Customer as Paid
+**POST** `/customers/{id}/mark-as-paid`
+
+Marks a customer's subscription as paid and updates payment dates.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Customer marked as paid successfully",
+  "data": {
+    "customer": {
+      // Updated customer object with new payment status
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const markCustomerAsPaid = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/mark-as-paid`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 17. Send Payment Reminder
+**POST** `/customers/{id}/send-reminder`
+
+Sends a payment reminder to the customer and updates overdue status.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Payment reminder sent successfully",
+  "data": {
+    "customer": {
+      // Updated customer object with new overdue status
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const sendPaymentReminder = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/send-reminder`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Customer Management Frontend Integration Tips
+
+### 1. Customer List Component
+```javascript
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [filters, setFilters] = useState({});
+  const [pagination, setPagination] = useState({});
+
+  const loadCustomers = async () => {
+    try {
+      const data = await getCustomers(filters);
+      setCustomers(data.customers);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, [filters]);
+
+  return (
+    <div>
+      {/* Filter controls */}
+      <FilterControls filters={filters} onFiltersChange={setFilters} />
+      
+      {/* Customer table */}
+      <CustomerTable customers={customers} onRefresh={loadCustomers} />
+      
+      {/* Pagination */}
+      <Pagination pagination={pagination} onPageChange={loadCustomers} />
+    </div>
+  );
+};
+```
+
+### 2. Customer Profile Component
+```javascript
+const CustomerProfile = ({ customerId }) => {
+  const [customer, setCustomer] = useState(null);
+
+  const loadCustomer = async () => {
+    try {
+      const customerData = await getCustomer(customerId);
+      setCustomer(customerData);
+    } catch (error) {
+      console.error('Error loading customer:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomer();
+  }, [customerId]);
+
+  if (!customer) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {/* Customer header with photo, name, email */}
+      <CustomerHeader customer={customer} />
+      
+      {/* Key metrics cards */}
+      <CustomerMetrics customer={customer} />
+      
+      {/* Contact and membership details */}
+      <CustomerDetails customer={customer} />
+    </div>
+  );
+};
+```
+
+### 3. Payment Management
+```javascript
+const PaymentActions = ({ customer }) => {
+  const handleMarkAsPaid = async () => {
+    try {
+      await markCustomerAsPaid(customer.id);
+      // Refresh customer data or update local state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error marking as paid:', error);
+    }
+  };
+
+  const handleSendReminder = async () => {
+    try {
+      await sendPaymentReminder(customer.id);
+      // Refresh customer data or update local state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={handleMarkAsPaid}>Mark as Paid</button>
+      <button onClick={handleSendReminder}>Send Reminder</button>
+    </div>
+  );
+};
+```
+
+---
+
+---
+
+## Customer Profile Picture Management Endpoints
+
+### 18. Upload Customer Profile Picture
+**POST** `/customers/{id}/upload-profile-picture`
+
+Uploads a profile picture for a customer.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+#### Request Body (Form Data)
+- `profile_picture` (file, required): Image file (jpeg, png, jpg, gif, webp, max 2MB)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Profile picture uploaded successfully",
+  "data": {
+    "customer": {
+      // Updated customer object with new profile_picture_url
+    },
+    "profile_picture_url": "http://127.0.0.1:8000/storage/customers/profile-pictures/customer_1_1642123456_abc123def4.jpg"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const uploadCustomerProfilePicture = async (customerId, imageFile) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const formData = new FormData();
+  formData.append('profile_picture', imageFile);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/upload-profile-picture`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      // Don't set Content-Type header - let browser set it for FormData
+    },
+    body: formData
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage with file input
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    try {
+      const result = await uploadCustomerProfilePicture(customerId, file);
+      setProfilePictureUrl(result.profile_picture_url);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  }
+};
+```
+
+---
+
+### 19. Delete Customer Profile Picture
+**DELETE** `/customers/{id}/delete-profile-picture`
+
+Deletes a customer's profile picture.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Profile picture deleted successfully",
+  "data": {
+    "customer": {
+      // Updated customer object with profile_picture_url set to null
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const deleteCustomerProfilePicture = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/delete-profile-picture`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customer;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 20. Get Customer Profile Picture
+**GET** `/customers/{id}/profile-picture`
+
+Retrieves a customer's profile picture URL.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "profile_picture_url": "http://127.0.0.1:8000/storage/customers/profile-pictures/customer_1_1642123456_abc123def4.jpg",
+    "customer_id": 1,
+    "customer_name": "Asim Khan"
+  }
+}
+```
+
+#### Response (404 Not Found) - No Profile Picture
+```json
+{
+  "success": false,
+  "message": "No profile picture found for this customer"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getCustomerProfilePicture = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/profile-picture`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.profile_picture_url;
+  } else {
+    return null; // No profile picture
+  }
+};
+```
+
+---
+
+## Image Upload Frontend Integration Tips
+
+### 1. Image Upload Component
+```javascript
+const ProfilePictureUpload = ({ customerId, currentImageUrl, onImageChange }) => {
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size must be less than 2MB');
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewUrl(e.target.result);
+      reader.readAsDataURL(file);
+
+      // Upload file
+      uploadImage(file);
+    }
+  };
+
+  const uploadImage = async (file) => {
+    setUploading(true);
+    try {
+      const result = await uploadCustomerProfilePicture(customerId, file);
+      onImageChange(result.profile_picture_url);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteCustomerProfilePicture(customerId);
+      setPreviewUrl(null);
+      onImageChange(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
+  return (
+    <div className="profile-picture-upload">
+      <div className="current-image">
+        {previewUrl ? (
+          <img src={previewUrl} alt="Profile" style={{ width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover' }} />
+        ) : (
+          <div className="placeholder" style={{ width: '150px', height: '150px', borderRadius: '50%', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            No Image
+          </div>
+        )}
+      </div>
+      
+      <div className="upload-controls">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          disabled={uploading}
+          style={{ display: 'none' }}
+          id="image-upload"
+        />
+        <label htmlFor="image-upload" className="upload-button">
+          {uploading ? 'Uploading...' : 'Upload Image'}
+        </label>
+        
+        {previewUrl && (
+          <button onClick={handleDelete} className="delete-button">
+            Delete Image
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Image Display Component
+```javascript
+const CustomerProfilePicture = ({ customer, size = 'medium' }) => {
+  const [imageUrl, setImageUrl] = useState(customer.profile_picture_url);
+
+  const sizeClasses = {
+    small: 'w-12 h-12',
+    medium: 'w-24 h-24',
+    large: 'w-32 h-32'
+  };
+
+  const handleImageError = () => {
+    setImageUrl(null);
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gray-200 flex items-center justify-center`}>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={customer.name}
+          className="w-full h-full object-cover"
+          onError={handleImageError}
+        />
+      ) : (
+        <div className="text-gray-500 text-center">
+          <div className="text-2xl">👤</div>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### 3. File Validation Helper
+```javascript
+const validateImageFile = (file) => {
+  const errors = [];
+  
+  // Check file size (2MB max)
+  if (file.size > 2 * 1024 * 1024) {
+    errors.push('File size must be less than 2MB');
+  }
+  
+  // Check file type
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    errors.push('File must be an image (JPEG, PNG, JPG, GIF, or WebP)');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+```
+
+---
+
+## Image Storage Information
+
+### Storage Location
+- **Local Storage**: `storage/app/public/customers/profile-pictures/`
+- **Public URL**: `http://127.0.0.1:8000/storage/customers/profile-pictures/`
+- **File Naming**: `customer_{id}_{timestamp}_{random}.{extension}`
+
+### Supported Formats
+- JPEG (.jpg, .jpeg)
+- PNG (.png)
+- GIF (.gif)
+- WebP (.webp)
+
+### File Size Limits
+- **Maximum Size**: 2MB per image
+- **Validation**: Server-side validation with proper error messages
+
+### Security Features
+- File type validation (images only)
+- File size limits
+- Automatic old file cleanup when uploading new images
+- Unique filename generation to prevent conflicts
+
+---
+
+This documentation provides everything your React frontend team needs to integrate with both the authentication system and customer management features, including comprehensive image upload functionality. The customer management module includes all the fields visible in the dashboard images, with proper validation, filtering, CRUD operations, and profile picture management ready for production use.

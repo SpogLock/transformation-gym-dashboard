@@ -16,6 +16,7 @@ import {
   MenuList,
   MenuItem,
   IconButton,
+  Avatar,
 } from "@chakra-ui/react";
 import {
   EditIcon,
@@ -49,7 +50,9 @@ function StockTableRow(props) {
     nextDueDate,
     onMouseEnter,
     onMouseLeave,
-    onClick
+    onClick,
+    onEdit,
+    onDelete
   } = props;
   const textColor = useColorModeValue("gray.700", "white");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -127,13 +130,7 @@ function StockTableRow(props) {
           transition="all 0.2s ease-in-out"
           mx="auto"
         >
-          <Image
-            src={picture}
-            alt={memberName}
-            w="100%"
-            h="100%"
-            objectFit="cover"
-          />
+          <Avatar name={memberName} src={picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
         </Box>
       </Td>
 
@@ -189,7 +186,7 @@ function StockTableRow(props) {
       {/* Membership Status */}
       <Td width="8%" px="16px" py="12px" textAlign="left">
         <Badge
-          colorScheme={membershipStatus === "Active" ? "green" : "red"}
+          colorScheme={(membershipStatus || '').toLowerCase().trim() === 'active' ? "green" : "red"}
           variant="subtle"
           px={3}
           py={1}
@@ -202,7 +199,7 @@ function StockTableRow(props) {
           alignItems="center"
           justifyContent="center"
         >
-          {membershipStatus}
+          {membershipStatus ? (membershipStatus.charAt(0).toUpperCase() + membershipStatus.slice(1).toLowerCase()) : ''}
         </Badge>
       </Td>
 
@@ -278,7 +275,7 @@ function StockTableRow(props) {
               icon={<EditIcon />}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log("Edit customer:", memberName);
+                onEdit && onEdit();
               }}
               _hover={{
                 bg: "blue.50"
@@ -290,7 +287,7 @@ function StockTableRow(props) {
               icon={<DeleteIcon />}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log("Delete customer:", memberName);
+                onDelete && onDelete();
               }}
               _hover={{
                 bg: "red.50"

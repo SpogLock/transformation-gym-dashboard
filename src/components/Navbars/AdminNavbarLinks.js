@@ -43,12 +43,16 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import routes from "routes.js";
 import { useSearch } from "contexts/SearchContext";
+import { useAuth } from "contexts/AuthContext";
+import { useHistory } from "react-router-dom";
 
 export default function HeaderLinks(props) {
   const { variant, children, fixed, secondary, onOpen, ...rest } = props;
   const location = useLocation();
+  const history = useHistory();
   const { searchQuery, filters, updateSearchQuery, updateFilters, clearFilters, resetSearch } = useSearch();
   const { colorMode, toggleColorMode } = useColorMode();
+  const { user, isAuthenticated, logout } = useAuth();
 
   // Chakra Color Mode
   let mainTeal = useColorModeValue("brand.500", "brand.500");
@@ -165,32 +169,97 @@ export default function HeaderLinks(props) {
         </InputGroup>
 
       </HStack>
-      <NavLink to="/auth/signin">
-        <Button
-          ms="0px"
-          px={{ base: "4px", sm: "6px", md: "0px" }}
-          me={{ sm: "2px", md: "16px" }}
-          color={navbarIcon}
-          variant="transparent-with-icon"
-          size={{ base: "xs", sm: "sm", md: "md" }}
-          rightIcon={
-            document.documentElement.dir ? (
-              ""
-            ) : (
-              <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
-            )
-          }
-          leftIcon={
-            document.documentElement.dir ? (
-              <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
-            ) : (
-              ""
-            )
-          }
-        >
-          <Text display={{ base: "none", sm: "none", md: "flex" }} fontSize={{ base: "xs", sm: "sm", md: "md" }}>Sign In</Text>
-        </Button>
-      </NavLink>
+      
+      {/* User Menu */}
+      {isAuthenticated && user ? (
+        <Menu>
+          <MenuButton
+            as={Button}
+            ms="0px"
+            px={{ base: "6px", sm: "8px", md: "12px" }}
+            me={{ sm: "2px", md: "16px" }}
+            color={navbarIcon}
+            variant="transparent-with-icon"
+            size={{ base: "xs", sm: "sm", md: "md" }}
+            rightIcon={
+              !document.documentElement.dir && (
+                <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
+              )
+            }
+            leftIcon={
+              document.documentElement.dir && (
+                <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
+              )
+            }
+          >
+            <Text display={{ base: "none", sm: "none", md: "flex" }} fontSize={{ base: "xs", sm: "sm", md: "md" }}>
+              {user.name}
+            </Text>
+          </MenuButton>
+          <MenuList p="12px">
+            <Flex flexDirection="column">
+              <MenuItem 
+                borderRadius="8px" 
+                mb="8px"
+                onClick={() => history.push('/admin/profile')}
+              >
+                <Flex align="center">
+                  <ProfileIcon color={mainText} w="18px" h="18px" me="12px" />
+                  <Text fontSize="sm">Profile</Text>
+                </Flex>
+              </MenuItem>
+              <MenuItem 
+                borderRadius="8px" 
+                mb="8px"
+                onClick={() => history.push('/admin/settings')}
+              >
+                <Flex align="center">
+                  <SettingsIcon color={mainText} w="18px" h="18px" me="12px" />
+                  <Text fontSize="sm">Settings</Text>
+                </Flex>
+              </MenuItem>
+              <Divider my="8px" />
+              <MenuItem 
+                borderRadius="8px"
+                color="red.500"
+                onClick={async () => {
+                  await logout();
+                  history.push('/auth/signin');
+                }}
+              >
+                <Text fontSize="sm" fontWeight="bold">Logout</Text>
+              </MenuItem>
+            </Flex>
+          </MenuList>
+        </Menu>
+      ) : (
+        <NavLink to="/auth/signin">
+          <Button
+            ms="0px"
+            px={{ base: "4px", sm: "6px", md: "0px" }}
+            me={{ sm: "2px", md: "16px" }}
+            color={navbarIcon}
+            variant="transparent-with-icon"
+            size={{ base: "xs", sm: "sm", md: "md" }}
+            rightIcon={
+              document.documentElement.dir ? (
+                ""
+              ) : (
+                <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
+              )
+            }
+            leftIcon={
+              document.documentElement.dir ? (
+                <ProfileIcon color={navbarIcon} w={{ base: "16px", sm: "18px", md: "22px" }} h={{ base: "16px", sm: "18px", md: "22px" }} me="0px" />
+              ) : (
+                ""
+              )
+            }
+          >
+            <Text display={{ base: "none", sm: "none", md: "flex" }} fontSize={{ base: "xs", sm: "sm", md: "md" }}>Sign In</Text>
+          </Button>
+        </NavLink>
+      )}
        {/* Icons Container - Better Mobile Alignment */}
        <HStack spacing={{ base: "3px", sm: "4px", md: "12px" }} align="center" flexShrink={0}>
          {/* Sidebar Toggle */}

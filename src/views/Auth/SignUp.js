@@ -12,17 +12,110 @@ import {
   Switch,
   Text,
   useColorModeValue,
+  useToast,
+  FormErrorMessage,
 } from "@chakra-ui/react";
 // Assets
 import BgSignUp from "assets/img/BgSignUp.png";
-import React from "react";
+import React, { useState } from "react";
+import { useHistory } from "react-router-dom";
 import { FaApple, FaFacebook, FaGoogle } from "react-icons/fa";
+// Auth context
+import { useAuth } from "contexts/AuthContext";
 
 function SignUp() {
+  const history = useHistory();
+  const toast = useToast();
+  const { register } = useAuth();
+
+  // Form state
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+
   const titleColor = useColorModeValue("brand.300", "brand.200");
   const textColor = useColorModeValue("gray.700", "white");
   const bgColor = useColorModeValue("white", "gray.700");
   const bgIcons = useColorModeValue("brand.200", "rgba(255, 255, 255, 0.5)");
+
+  // Form validation
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Name is required";
+    } else if (name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
+    }
+
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Email is invalid";
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await register(name, email, password, password, "staff");
+
+      if (result.success) {
+        toast({
+          title: "Registration successful",
+          description: `Welcome, ${result.data.user.name}! Your account has been created.`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+          position: "top-right",
+        });
+
+        // Redirect to dashboard
+        history.push("/admin/dashboard");
+      } else {
+        toast({
+          title: "Registration failed",
+          description: result.error || "Unable to create account. Please try again.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top-right",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top-right",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Flex
       direction='column'
@@ -150,49 +243,71 @@ function SignUp() {
             mb='22px'>
             or
           </Text>
-          <FormControl>
-            <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
-              Name
-            </FormLabel>
-            <Input
-              fontSize='sm'
-              ms='4px'
-              borderRadius='15px'
-              type='text'
-              placeholder='Your full name'
-              mb='24px'
-              size='lg'
-            />
-            <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
-              Email
-            </FormLabel>
-            <Input
-              fontSize='sm'
-              ms='4px'
-              borderRadius='15px'
-              type='email'
-              placeholder='Your email address'
-              mb='24px'
-              size='lg'
-            />
-            <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
-              Password
-            </FormLabel>
-            <Input
-              fontSize='sm'
-              ms='4px'
-              borderRadius='15px'
-              type='password'
-              placeholder='Your password'
-              mb='24px'
-              size='lg'
-            />
+          <form onSubmit={handleSubmit}>
+            <FormControl isInvalid={errors.name} mb='24px'>
+              <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
+                Name
+              </FormLabel>
+              <Input
+                fontSize='sm'
+                ms='4px'
+                borderRadius='15px'
+                type='text'
+                placeholder='Your full name'
+                size='lg'
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <FormErrorMessage>{errors.name}</FormErrorMessage>
+            </FormControl>
+
+            <FormControl isInvalid={errors.email} mb='24px'>
+              <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
+                Email
+              </FormLabel>
+              <Input
+                fontSize='sm'
+                ms='4px'
+                borderRadius='15px'
+                type='email'
+                placeholder='Your email address'
+                size='lg'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <FormErrorMessage>{errors.email}</FormErrorMessage>
+            </FormControl>
+
+            <FormControl isInvalid={errors.password} mb='24px'>
+              <FormLabel ms='4px' fontSize='sm' fontWeight='normal'>
+                Password
+              </FormLabel>
+              <Input
+                fontSize='sm'
+                ms='4px'
+                borderRadius='15px'
+                type='password'
+                placeholder='Your password'
+                size='lg'
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <FormErrorMessage>{errors.password}</FormErrorMessage>
+            </FormControl>
+
             <FormControl display='flex' alignItems='center' mb='24px'>
-              <Switch id='remember-login' colorScheme='brand' me='10px' />
+              <Switch
+                id='remember-login'
+                colorScheme='brand'
+                me='10px'
+                isChecked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
               <FormLabel htmlFor='remember-login' mb='0' fontWeight='normal'>
                 Remember me
               </FormLabel>
             </FormControl>
+
             <Button
               type='submit'
               bg='brand.300'
@@ -202,6 +317,8 @@ function SignUp() {
               w='100%'
               h='45'
               mb='24px'
+              isLoading={loading}
+              loadingText='Creating account...'
               _hover={{
                 bg: "brand.200",
               }}
@@ -210,7 +327,7 @@ function SignUp() {
               }}>
               SIGN UP
             </Button>
-          </FormControl>
+          </form>
           <Flex
             flexDirection='column'
             justifyContent='center'
@@ -223,8 +340,9 @@ function SignUp() {
                 color={titleColor}
                 as='span'
                 ms='5px'
-                href='#'
-                fontWeight='bold'>
+                fontWeight='bold'
+                onClick={() => history.push("/auth/signin")}
+                cursor='pointer'>
                 Sign In
               </Link>
             </Text>

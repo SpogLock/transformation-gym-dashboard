@@ -32,10 +32,11 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import { AttachmentIcon, AddIcon, DeleteIcon } from "@chakra-ui/icons";
+import { uploadCustomerProfilePicture } from "services/customerService";
 
 const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
   const [formData, setFormData] = useState({
-    picture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+    picture: "",
     memberName: "",
     mobileNo: "",
     email: "",
@@ -115,7 +116,8 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
       reader.onload = (e) => {
         setFormData(prev => ({
           ...prev,
-          picture: e.target.result
+          picture: e.target.result,
+          _selectedFile: file
         }));
       };
       reader.readAsDataURL(file);
@@ -182,7 +184,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Generate a new ID for the customer and calculate next due date if not set
     const newCustomer = {
       ...formData,
@@ -196,8 +198,13 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
         return nextDue.toISOString().split('T')[0];
       })(),
     };
-    
-    onAddCustomer(newCustomer);
+    try {
+      await onAddCustomer(newCustomer);
+      // Image upload will be handled after server returns the real ID via the list reload.
+      // If needed later, we can enhance this to pass back the created ID and call uploadCustomerProfilePicture.
+    } catch (e) {
+      // no-op; parent toasts errors
+    }
     
     // Reset form
     setFormData({
@@ -269,7 +276,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
               <VStack spacing={4} align="center">
                 <Avatar
                   size="xl"
-                  src={formData.picture}
+                  src={formData.picture || undefined}
                   name={formData.memberName || "Customer"}
                   border="4px solid"
                   borderColor="brand.300"
@@ -283,7 +290,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    Upload Photo
+                    Upload Avatar
                   </Button>
                   <Button
                     leftIcon={<AddIcon />}

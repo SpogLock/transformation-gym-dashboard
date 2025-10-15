@@ -23,16 +23,20 @@ import logoFavicon from "assets/img/logo.jpg";
 import AuthLayout from "layouts/Auth.js";
 import AdminLayout from "layouts/Admin.js";
 import RTLLayout from "layouts/RTL.js";
+import { AuthProvider } from "contexts/AuthContext";
+import ProtectedRoute from "components/ProtectedRoute/ProtectedRoute";
 
 ReactDOM.render(
-  <HashRouter>
-    <Switch>
-      <Route path={`/auth`} component={AuthLayout} />
-      <Route path={`/admin`} component={AdminLayout} />
-      <Route path={`/rtl`} component={RTLLayout} />
-      <Redirect from={`/`} to="/auth/signin" />
-    </Switch>
-  </HashRouter>,
+  <AuthProvider>
+    <HashRouter>
+      <Switch>
+        <Route path={`/auth`} component={AuthLayout} />
+        <ProtectedRoute path={`/admin`} component={AdminLayout} />
+        <ProtectedRoute path={`/rtl`} component={RTLLayout} />
+        <Redirect from={`/`} to="/auth/signin" />
+      </Switch>
+    </HashRouter>
+  </AuthProvider>,
   document.getElementById("root")
 );
 
