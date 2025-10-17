@@ -116,6 +116,7 @@ var dashRoutes = [
       { path: "/staff-management", name: "Staff Management", rtlName: "لوحة القيادة", icon: <PersonIcon color="inherit" />, component: StaffManagement, layout: "/admin" },
       // Keep these accessible, but hidden
       { path: "/profile", name: "Profile", icon: <PersonIcon color="inherit" />, secondaryNavbar: true, component: Profile, layout: "/admin", hidden: true },
+      { path: "/customer-profile/:customerId", name: "Customer Profile", icon: <PersonIcon color="inherit" />, secondaryNavbar: true, component: Profile, layout: "/admin", hidden: true },
       { path: "/product-profile", name: "Product Profile", icon: <PersonIcon color="inherit" />, secondaryNavbar: true, component: ProductProfile, layout: "/admin", hidden: true },
       { path: "/invoice-detail", name: "Invoice Detail", icon: <CopyIcon color="inherit" />, secondaryNavbar: true, component: InvoiceDetail, layout: "/admin", hidden: true },
     ],

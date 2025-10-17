@@ -1562,4 +1562,1170 @@ const validateImageFile = (file) => {
 
 ---
 
-This documentation provides everything your React frontend team needs to integrate with both the authentication system and customer management features, including comprehensive image upload functionality. The customer management module includes all the fields visible in the dashboard images, with proper validation, filtering, CRUD operations, and profile picture management ready for production use.
+## Plan Management Endpoints
+
+All Plan endpoints require authentication and the `staff_or_admin` middleware.
+
+### 21. Get All Plans
+**GET** `/plans`
+
+Retrieves a paginated list of plans with optional filters.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `search` (optional): Search by `name` or `description`
+- `is_active` (optional): Filter by active status (`true`, `false`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 1,
+        "name": "Premium",
+        "description": "Full access with trainer",
+        "monthly_fee": "4500.00",
+        "registration_fee": "2000.00",
+        "is_active": true,
+        "created_at": "2025-10-17T10:30:00.000000Z",
+        "updated_at": "2025-10-17T10:30:00.000000Z"
+      }
+    ],
+    "first_page_url": "http://127.0.0.1:8000/api/plans?page=1",
+    "from": 1,
+    "last_page": 1,
+    "last_page_url": "http://127.0.0.1:8000/api/plans?page=1",
+    "links": [],
+    "next_page_url": null,
+    "path": "http://127.0.0.1:8000/api/plans",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+---
+
+### 22. Create Plan
+**POST** `/plans`
+
+Creates a new plan.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "name": "Standard",
+  "description": "Gym floor access",
+  "monthly_fee": 3000,
+  "registration_fee": 1500,
+  "is_active": true
+}
+```
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "Plan created successfully",
+  "data": {
+    "id": 2,
+    "name": "Standard",
+    "description": "Gym floor access",
+    "monthly_fee": "3000.00",
+    "registration_fee": "1500.00",
+    "is_active": true,
+    "created_at": "2025-10-17T11:00:00.000000Z",
+    "updated_at": "2025-10-17T11:00:00.000000Z"
+  }
+}
+```
+
+---
+
+### 23. Get Plan Details
+**GET** `/plans/{id}`
+
+Retrieves details for a specific plan.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Premium",
+    "description": "Full access with trainer",
+    "monthly_fee": "4500.00",
+    "registration_fee": "2000.00",
+    "is_active": true,
+    "created_at": "2025-10-17T10:30:00.000000Z",
+    "updated_at": "2025-10-17T10:30:00.000000Z"
+  }
+}
+```
+
+---
+
+### 24. Update Plan
+**PUT** `/plans/{id}`
+
+Updates an existing plan (partial updates allowed; use PATCH or PUT).
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body (examples)
+```json
+{
+  "name": "Premium Plus",
+  "monthly_fee": 5000,
+  "registration_fee": 2500,
+  "is_active": true
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Plan updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Premium Plus",
+    "description": "Full access with trainer",
+    "monthly_fee": "5000.00",
+    "registration_fee": "2500.00",
+    "is_active": true,
+    "created_at": "2025-10-17T10:30:00.000000Z",
+    "updated_at": "2025-10-17T12:00:00.000000Z"
+  }
+}
+```
+
+---
+
+### 25. Delete Plan
+**DELETE** `/plans/{id}`
+
+Deletes a plan.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Plan deleted successfully"
+}
+```
+
+---
+
+### Frontend Integration Examples (Plans)
+
+```javascript
+// List plans
+const getPlans = async (filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const query = new URLSearchParams(filters);
+  const res = await fetch(`http://127.0.0.1:8000/api/plans?${query}`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message);
+  return data.data; // Laravel paginator object
+};
+
+// Create plan
+const createPlan = async (payload) => {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch('http://127.0.0.1:8000/api/plans', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message);
+  return data.data;
+};
+
+// Update plan
+const updatePlan = async (id, payload) => {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch(`http://127.0.0.1:8000/api/plans/${id}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message);
+  return data.data;
+};
+
+// Delete plan
+const deletePlan = async (id) => {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch(`http://127.0.0.1:8000/api/plans/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message);
+  return data.message;
+};
+```
+
+---
+
+## Customer Plan Management Endpoints
+
+These endpoints allow you to manage customer plans and view plan details.
+
+### 26. Get Customer's Plan Details
+**GET** `/customers/{id}/plan`
+
+Retrieves the plan details for a specific customer, including registration fee.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "plan": {
+      "id": 1,
+      "name": "Premium",
+      "description": "Full access with trainer",
+      "monthly_fee": "4500.00",
+      "registration_fee": "2000.00",
+      "is_active": true,
+      "created_at": "2025-10-17T10:30:00.000000Z",
+      "updated_at": "2025-10-17T10:30:00.000000Z"
+    },
+    "customer_id": 1,
+    "customer_name": "John Doe",
+    "registration_fee": "2000.00"
+  }
+}
+```
+
+#### Response (404 Not Found) - No Plan Assigned
+```json
+{
+  "success": false,
+  "message": "No plan assigned to this customer"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getCustomerPlan = async (customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/plan`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 27. Update Customer's Plan
+**PUT** `/customers/{id}/plan`
+
+Changes a customer's plan to a different one.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "plan_id": 2
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Customer plan updated successfully",
+  "data": {
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "plan_id": 2,
+      "plan_display": "Standard",
+      "monthly_fee": "3000.00",
+      "registration_fee": "1500.00",
+      // ... other customer fields
+    },
+    "plan": {
+      "id": 2,
+      "name": "Standard",
+      "description": "Gym floor access",
+      "monthly_fee": "3000.00",
+      "registration_fee": "1500.00",
+      "is_active": true
+    },
+    "registration_fee": "1500.00"
+  }
+}
+```
+
+#### Response (422 Unprocessable Entity) - Validation Error
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "plan_id": ["The plan id field is required."]
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const updateCustomerPlan = async (customerId, planId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/plan`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ plan_id: planId })
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Updated Customer Management Endpoints
+
+The existing customer endpoints have been updated to work with the new plan system:
+
+### Updated Customer List (GET /customers)
+Now includes plan information and supports filtering by plan:
+
+#### Query Parameters
+- `plan_id` (optional): Filter customers by specific plan ID
+- All existing filters (status, type, subscription_status, has_trainer, search, etc.)
+
+#### Response Example
+```json
+{
+  "success": true,
+  "data": {
+    "customers": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "plan_id": 1,
+        "plan_display": "Premium",
+        "monthly_fee": "4500.00",
+        "registration_fee": "2000.00",
+        "plan_model": {
+          "id": 1,
+          "name": "Premium",
+          "description": "Full access with trainer",
+          "monthly_fee": "4500.00",
+          "registration_fee": "2000.00",
+          "is_active": true
+        },
+        // ... other customer fields
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 1,
+      "per_page": 15,
+      "total": 1,
+      "from": 1,
+      "to": 1
+    }
+  }
+}
+```
+
+### Updated Customer Creation (POST /customers)
+Now accepts `plan_id` instead of the old `plan` enum:
+
+#### Request Body
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "plan_id": 1,
+  "monthly_fee": 4500.00,
+  "mobile_number": "+1234567890",
+  "address": "123 Main St"
+}
+```
+
+### Updated Customer Update (PUT /customers/{id})
+Now accepts `plan_id` for updating customer plans:
+
+#### Request Body
+```json
+{
+  "name": "John Smith",
+  "plan_id": 2,
+  "monthly_fee": 3000.00
+}
+```
+
+---
+
+## Customer Plan Management Frontend Integration Tips
+
+### 1. Plan Selection Component
+```javascript
+const PlanSelector = ({ customerId, currentPlanId, onPlanChange }) => {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadPlans = async () => {
+    try {
+      const data = await getPlans({ is_active: true });
+      setPlans(data.data);
+    } catch (error) {
+      console.error('Error loading plans:', error);
+    }
+  };
+
+  const handlePlanChange = async (newPlanId) => {
+    setLoading(true);
+    try {
+      await updateCustomerPlan(customerId, newPlanId);
+      onPlanChange(newPlanId);
+    } catch (error) {
+      console.error('Error updating plan:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  return (
+    <select 
+      value={currentPlanId || ''} 
+      onChange={(e) => handlePlanChange(parseInt(e.target.value))}
+      disabled={loading}
+    >
+      <option value="">Select Plan</option>
+      {plans.map(plan => (
+        <option key={plan.id} value={plan.id}>
+          {plan.name} - ${plan.monthly_fee}/month
+        </option>
+      ))}
+    </select>
+  );
+};
+```
+
+### 2. Customer Plan Display Component
+```javascript
+const CustomerPlanCard = ({ customerId }) => {
+  const [planData, setPlanData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadPlanData = async () => {
+    try {
+      const data = await getCustomerPlan(customerId);
+      setPlanData(data);
+    } catch (error) {
+      console.error('Error loading plan:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlanData();
+  }, [customerId]);
+
+  if (loading) return <div>Loading plan...</div>;
+  if (!planData) return <div>No plan assigned</div>;
+
+  return (
+    <div className="plan-card">
+      <h3>{planData.plan.name}</h3>
+      <p>{planData.plan.description}</p>
+      <div className="plan-fees">
+        <div>Monthly Fee: ${planData.plan.monthly_fee}</div>
+        <div>Registration Fee: ${planData.registration_fee}</div>
+      </div>
+    </div>
+  );
+};
+```
+
+### 3. Customer List with Plan Filter
+```javascript
+const CustomerListWithPlans = () => {
+  const [customers, setCustomers] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [filters, setFilters] = useState({});
+
+  const loadCustomers = async () => {
+    try {
+      const data = await getCustomers(filters);
+      setCustomers(data.customers);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
+  };
+
+  const loadPlans = async () => {
+    try {
+      const data = await getPlans({ is_active: true });
+      setPlans(data.data);
+    } catch (error) {
+      console.error('Error loading plans:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+    loadPlans();
+  }, [filters]);
+
+  return (
+    <div>
+      {/* Plan filter dropdown */}
+      <select 
+        value={filters.plan_id || ''} 
+        onChange={(e) => setFilters({...filters, plan_id: e.target.value || undefined})}
+      >
+        <option value="">All Plans</option>
+        {plans.map(plan => (
+          <option key={plan.id} value={plan.id}>{plan.name}</option>
+        ))}
+      </select>
+
+      {/* Customer list */}
+      {customers.map(customer => (
+        <div key={customer.id} className="customer-card">
+          <h3>{customer.name}</h3>
+          <p>Plan: {customer.plan_display}</p>
+          <p>Monthly Fee: ${customer.monthly_fee}</p>
+          <p>Registration Fee: ${customer.registration_fee}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+---
+
+## Fee Tracking and Submission System
+
+### 28. Submit Fee Payment
+**POST** `/fee-submissions/submit`
+
+Submits a fee payment (monthly fee, registration fee, etc.) and automatically generates an invoice.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "customer_id": 1,
+  "fee_type": "monthly_fee",
+  "amount": 4500.00,
+  "payment_date": "2025-10-17",
+  "payment_method": "cash",
+  "notes": "Monthly fee payment"
+}
+```
+
+#### Fee Types
+- `monthly_fee` - Monthly subscription fee
+- `registration_fee` - One-time registration fee
+- `late_fee` - Late payment penalty
+- `other` - Other fee types
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "Fee submitted successfully",
+  "data": {
+    "fee_submission": {
+      "id": 1,
+      "customer_id": 1,
+      "invoice_id": 1,
+      "fee_type": "monthly_fee",
+      "amount": "4500.00",
+      "payment_date": "2025-10-17",
+      "payment_method": "cash",
+      "notes": "Monthly fee payment",
+      "fee_type_display": "Monthly Fee",
+      "payment_method_display": "Cash",
+      "days_ago": 0,
+      "created_at": "2025-10-17T18:30:00.000000Z",
+      "updated_at": "2025-10-17T18:30:00.000000Z"
+    },
+    "customer": {
+      "id": 1,
+      "name": "Asim Mahmood",
+      "last_payment_date": "2025-10-17",
+      "next_due_date": "2025-11-17",
+      "subscription_status": "paid",
+      "overdue_days": 0,
+      "fee_status": "PAID 0 days ago",
+      "days_since_payment": 0,
+      "days_until_due": 31,
+      "is_fee_overdue": false
+    },
+    "invoice": {
+      "id": 1,
+      "invoice_number": "INV-20251017-0001",
+      "customer_id": 1,
+      "subtotal": "4500.00",
+      "total_amount": "4500.00",
+      "payment_status": "paid"
+    }
+  }
+}
+```
+
+---
+
+### 29. Get Customer Fee Status
+**GET** `/customers/{id}/fee-status`
+
+Retrieves comprehensive fee status information for a customer.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      "id": 1,
+      "name": "Asim Mahmood",
+      "email": "asim@example.com",
+      "plan_id": 1,
+      "plan_display": "Premium",
+      "monthly_fee": "4500.00",
+      "registration_fee": "2000.00",
+      "last_payment_date": "2025-10-17",
+      "next_due_date": "2025-11-17",
+      "subscription_status": "paid",
+      "overdue_days": 0
+    },
+    "fee_status": "PAID 0 days ago",
+    "days_since_payment": 0,
+    "days_until_due": 31,
+    "is_overdue": false,
+    "last_payment_date": "2025-10-17",
+    "next_due_date": "2025-11-17",
+    "monthly_fee": "4500.00",
+    "registration_fee": "2000.00",
+    "recent_fee_submissions": [
+      {
+        "id": 1,
+        "fee_type": "monthly_fee",
+        "amount": "4500.00",
+        "payment_date": "2025-10-17",
+        "payment_method": "cash",
+        "fee_type_display": "Monthly Fee",
+        "payment_method_display": "Cash",
+        "days_ago": 0
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 30. Get Customer Fee History
+**GET** `/customers/{id}/fee-history`
+
+Retrieves the complete fee payment history for a customer.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `fee_type` (optional): Filter by fee type (`monthly_fee`, `registration_fee`, `late_fee`, `other`)
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `payment_date`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      "id": 1,
+      "name": "Asim Mahmood",
+      "email": "asim@example.com"
+    },
+    "fee_submissions": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 1,
+          "customer_id": 1,
+          "invoice_id": 1,
+          "fee_type": "monthly_fee",
+          "amount": "4500.00",
+          "payment_date": "2025-10-17",
+          "payment_method": "cash",
+          "notes": "Monthly fee payment",
+          "fee_type_display": "Monthly Fee",
+          "payment_method_display": "Cash",
+          "days_ago": 0,
+          "created_at": "2025-10-17T18:30:00.000000Z"
+        }
+      ],
+      "first_page_url": "http://127.0.0.1:8000/api/customers/1/fee-history?page=1",
+      "from": 1,
+      "last_page": 1,
+      "last_page_url": "http://127.0.0.1:8000/api/customers/1/fee-history?page=1",
+      "links": [],
+      "next_page_url": null,
+      "path": "http://127.0.0.1:8000/api/customers/1/fee-history",
+      "per_page": 15,
+      "prev_page_url": null,
+      "to": 1,
+      "total": 1
+    }
+  }
+}
+```
+
+---
+
+### 31. Get Fee Submission Statistics
+**GET** `/fee-submissions-statistics`
+
+Retrieves comprehensive statistics about fee submissions.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "total_fee_submissions": 150,
+      "total_amount_collected": "675000.00",
+      "monthly_fees_collected": "450000.00",
+      "registration_fees_collected": "200000.00",
+      "today_collections": "22500.00",
+      "this_month_collections": "180000.00"
+    }
+  }
+}
+```
+
+---
+
+## Updated Customer APIs with Fee Tracking
+
+### Enhanced Customer List (GET /customers)
+Now includes fee status information and recent invoices:
+
+#### Response Example
+```json
+{
+  "success": true,
+  "data": {
+    "customers": [
+      {
+        "id": 1,
+        "name": "Asim Mahmood",
+        "email": "asim@example.com",
+        "plan_id": 1,
+        "plan_display": "Premium",
+        "monthly_fee": "4500.00",
+        "registration_fee": "2000.00",
+        "last_payment_date": "2025-10-17",
+        "next_due_date": "2025-11-17",
+        "subscription_status": "paid",
+        "overdue_days": 0,
+        "fee_status": "PAID 0 days ago",
+        "days_since_payment": 0,
+        "days_until_due": 31,
+        "is_fee_overdue": false,
+        "plan_model": {
+          "id": 1,
+          "name": "Premium",
+          "monthly_fee": "4500.00",
+          "registration_fee": "2000.00"
+        },
+        "fee_submissions": [
+          {
+            "id": 1,
+            "fee_type": "monthly_fee",
+            "amount": "4500.00",
+            "payment_date": "2025-10-17",
+            "fee_type_display": "Monthly Fee",
+            "days_ago": 0
+          }
+        ],
+        "invoices": [
+          {
+            "id": 12,
+            "invoice_number": "INV-20251017-0012",
+            "total_amount": "2000.00",
+            "payment_status": "paid",
+            "payment_method": "cash",
+            "created_at": "2025-10-17T18:30:00.000000Z"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Fee Tracking Frontend Integration Examples
+
+### 1. Fee Status Display Component
+```javascript
+const FeeStatusCard = ({ customerId }) => {
+  const [feeStatus, setFeeStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadFeeStatus = async () => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}/fee-status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setFeeStatus(data.data);
+    } catch (error) {
+      console.error('Error loading fee status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFeeStatus();
+  }, [customerId]);
+
+  if (loading) return <div>Loading fee status...</div>;
+  if (!feeStatus) return <div>No fee status available</div>;
+
+  return (
+    <div className="fee-status-card">
+      <h3>Fee Status</h3>
+      <div className={`status ${feeStatus.is_overdue ? 'overdue' : 'paid'}`}>
+        {feeStatus.fee_status}
+      </div>
+      <div className="details">
+        <p>Last Payment: {feeStatus.last_payment_date}</p>
+        <p>Next Due: {feeStatus.next_due_date}</p>
+        <p>Monthly Fee: ${feeStatus.monthly_fee}</p>
+        <p>Registration Fee: ${feeStatus.registration_fee}</p>
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Fee Submission Form
+```javascript
+const FeeSubmissionForm = ({ customerId, onFeeSubmitted }) => {
+  const [formData, setFormData] = useState({
+    fee_type: 'monthly_fee',
+    amount: '',
+    payment_method: 'cash',
+    notes: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/fee-submissions/submit', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customer_id: customerId,
+          ...formData
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        onFeeSubmitted(data.data);
+        setFormData({ fee_type: 'monthly_fee', amount: '', payment_method: 'cash', notes: '' });
+      }
+    } catch (error) {
+      console.error('Error submitting fee:', error);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <select 
+        value={formData.fee_type} 
+        onChange={(e) => setFormData({...formData, fee_type: e.target.value})}
+      >
+        <option value="monthly_fee">Monthly Fee</option>
+        <option value="registration_fee">Registration Fee</option>
+        <option value="late_fee">Late Fee</option>
+        <option value="other">Other</option>
+      </select>
+      
+      <input
+        type="number"
+        placeholder="Amount"
+        value={formData.amount}
+        onChange={(e) => setFormData({...formData, amount: e.target.value})}
+        required
+      />
+      
+      <select 
+        value={formData.payment_method} 
+        onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+      >
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="digital_wallet">Digital Wallet</option>
+      </select>
+      
+      <textarea
+        placeholder="Notes (optional)"
+        value={formData.notes}
+        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+      />
+      
+      <button type="submit">Submit Fee</button>
+    </form>
+  );
+};
+```
+
+### 3. Fee History Table
+```javascript
+const FeeHistoryTable = ({ customerId }) => {
+  const [feeHistory, setFeeHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadFeeHistory = async () => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}/fee-history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setFeeHistory(data.data.fee_submissions.data);
+    } catch (error) {
+      console.error('Error loading fee history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFeeHistory();
+  }, [customerId]);
+
+  return (
+    <div className="fee-history-table">
+      <h3>Fee Payment History</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Days Ago</th>
+          </tr>
+        </thead>
+        <tbody>
+          {feeHistory.map(fee => (
+            <tr key={fee.id}>
+              <td>{fee.payment_date}</td>
+              <td>{fee.fee_type_display}</td>
+              <td>${fee.amount}</td>
+              <td>{fee.payment_method_display}</td>
+              <td>{fee.days_ago} days ago</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+```
+
+---
+
+---
+
+## Thermal Printer Integration
+
+### Thermal Printer Invoice Format
+
+The invoice system is optimized for thermal printers (80mm width) commonly used in POS systems. The invoice template includes:
+
+#### Features:
+- **80mm width** - Standard thermal printer width
+- **Compact layout** - Optimized for small receipts
+- **Monospace font** - Courier New for consistent alignment
+- **Essential information only** - Company details, customer info, items, totals
+- **Print-friendly** - Minimal margins and compact spacing
+
+#### Invoice Template Includes:
+- Company header with name, address, phone, email
+- Invoice number, date, and time
+- Customer information (name, email, phone)
+- Itemized list with description, quantity, price, total
+- Subtotal, tax, discount, and final total
+- Payment status and method
+- Notes section
+- Thank you message
+- Generation timestamp
+
+### Thermal Printer API Endpoints
+
+#### Print Invoice to Thermal Printer
+**GET** `/invoices/{id}/print`
+
+Opens the invoice in a new window optimized for thermal printing.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response
+- Opens PDF in browser for direct printing
+- Optimized for 80mm thermal printers
+- Can be sent directly to thermal printer
+
+#### Frontend Integration Example
+```javascript
+const printInvoice = async (invoiceId) => {
+  try {
+    const response = await fetch(`/api/invoices/${invoiceId}/print`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      // Open in new window for printing
+      const printWindow = window.open('', '_blank');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      printWindow.location.href = url;
+    }
+  } catch (error) {
+    console.error('Error printing invoice:', error);
+  }
+};
+```
+
+#### Thermal Printer Setup Tips
+
+1. **Printer Configuration:**
+   - Set paper width to 80mm
+   - Use thermal paper (no ink required)
+   - Configure for receipt printing
+
+2. **Browser Settings:**
+   - Disable headers and footers
+   - Set margins to minimum (0.1 inch)
+   - Use "Print to PDF" then send to printer
+
+3. **POS Integration:**
+   - Use `window.print()` after loading the invoice
+   - Configure browser to auto-print
+   - Set up print queue for multiple invoices
+
+---
+
+This documentation provides everything your React frontend team needs to integrate with authentication, customer management, image upload, plan management, customer plan relationships, comprehensive fee tracking with automatic invoice generation, and thermal printer integration for POS systems. The system includes proper fee status tracking, payment history, automatic invoice generation, and thermal printer-optimized receipts.

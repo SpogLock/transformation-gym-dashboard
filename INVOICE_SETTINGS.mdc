@@ -1,0 +1,131 @@
+## Invoice Workflows for Frontend
+
+This file documents invoice generation flows so the frontend can control when to create registration invoices during customer creation and after.
+
+### 1) Create Customer WITH Registration Invoice (default)
+
+POST `/customers`
+
+Body:
+```json
+{
+  "name": "Asim Mahmood",
+  "email": "asim@example.com",
+  "plan_id": 1,
+  "generate_registration_invoice": true,           
+  "registration_invoice_paid": true,               
+  "registration_payment_method": "cash",          
+  "registration_payment_date": "2025-10-17",     
+  "registration_invoice_notes": "Welcome package"
+}
+```
+
+Notes:
+- If `generate_registration_invoice` is omitted, the backend assumes `true` unless `skip_registration_invoice` is explicitly set to `true`.
+- `registration_invoice_paid` defaults to `true`. Set to `false` to create a pending invoice.
+
+Response includes `registration_invoice` when generated.
+
+Additionally, customer list/detail endpoints embed recent invoices:
+
+- GET `/customers` → each item contains `invoices` (last 5)
+- GET `/customers/{id}` → `invoices` (last 10)
+
+Example (truncated):
+```json
+{
+  "id": 1,
+  "name": "Asim Mahmood",
+  "plan_display": "Premium",
+  "fee_status": "PAID 2 days ago",
+  "invoices": [
+    {
+      "id": 12,
+      "invoice_number": "INV-20251017-0012",
+      "total_amount": "2000.00",
+      "payment_status": "paid",
+      "payment_method": "cash",
+      "created_at": "2025-10-17T18:30:00.000000Z"
+    }
+  ]
+}
+```
+
+### 2) Create Customer WITHOUT Registration Invoice
+
+POST `/customers`
+
+Body:
+```json
+{
+  "name": "Asim Mahmood",
+  "email": "asim@example.com",
+  "plan_id": 1,
+  "skip_registration_invoice": true
+}
+```
+
+Use this when you just want to register a customer without charging registration at that moment.
+
+### 3) Generate Registration Invoice LATER for Existing Customer
+
+POST `/customers/{customer_id}/registration-invoice`
+
+Body (optional):
+```json
+{
+  "paid": true,
+  "payment_method": "card",
+  "payment_date": "2025-10-20",
+  "notes": "Paid at front desk"
+}
+```
+
+Behavior:
+- Uses the customer's current `plan.registration_fee` as the invoice amount.
+- When `paid` is true (default), it also writes a `FeeSubmission` of type `registration_fee` and updates customer payment metadata (last_payment_date, next_due_date, etc.).
+- When `paid` is false, it creates a pending invoice, no fee submission record is created until payment is made (use existing invoice payment/update endpoints).
+
+### 4) Print/Download the Invoice
+
+- Download PDF (80mm thermal template):
+  - GET `/invoices/{invoice_id}/download`
+
+- Open thermal-print-optimized PDF in browser and print:
+  - GET `/invoices/{invoice_id}/print`
+
+### Edge Cases & Rules
+
+- If the selected `plan` has no `registration_fee` or it is 0, no invoice will be generated even if `generate_registration_invoice=true`.
+- If `plan_id` is null at creation, no registration invoice is possible.
+- Monetary values respect decimal precision (2 dp) across all APIs.
+
+### Frontend Quick Recipes
+
+- Quick create + paid registration:
+```js
+await api.post('/customers', {
+  name, email, plan_id,
+  generate_registration_invoice: true,
+  registration_invoice_paid: true,
+  registration_payment_method: 'cash'
+});
+```
+
+- Quick create only (no invoice now):
+```js
+await api.post('/customers', {
+  name, email, plan_id,
+  skip_registration_invoice: true
+});
+```
+
+- Generate registration invoice later:
+```js
+await api.post(`/customers/${customerId}/registration-invoice`, {
+  paid: false, // or true
+  payment_method: 'card',
+});
+```
+
+

@@ -22,6 +22,8 @@ const Header = ({
   tabs,
   activeTab,
   onTabChange,
+  onEdit,
+  onDelete,
 }) => {
   // Chakra color mode
   const textColor = useColorModeValue("gray.700", "white");
@@ -104,7 +106,7 @@ const Header = ({
                   colorScheme="teal"
                   variant="outline"
                   leftIcon={<FaEdit />}
-                  onClick={() => console.log("Edit profile")}
+                  onClick={onEdit}
                 >
                   Edit
                 </Button>
@@ -113,7 +115,7 @@ const Header = ({
                   colorScheme="red"
                   variant="outline"
                   leftIcon={<FaTrash />}
-                  onClick={() => console.log("Delete customer")}
+                  onClick={onDelete}
                 >
                   Delete
                 </Button>
@@ -132,7 +134,7 @@ const Header = ({
                 colorScheme="teal"
                 variant="outline"
                 leftIcon={<FaEdit />}
-                onClick={() => console.log("Edit profile")}
+                onClick={onEdit}
               >
                 Edit
               </Button>
@@ -141,7 +143,7 @@ const Header = ({
                 colorScheme="red"
                 variant="outline"
                 leftIcon={<FaTrash />}
-                onClick={() => console.log("Delete customer")}
+                onClick={onDelete}
               >
                 Delete
               </Button>

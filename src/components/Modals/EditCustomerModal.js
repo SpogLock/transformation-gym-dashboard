@@ -26,6 +26,7 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import { AttachmentIcon } from "@chakra-ui/icons";
+import { getPlans } from "services/planService";
 
 const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
   const [formData, setFormData] = useState({});
@@ -44,10 +45,12 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
         membershipStatus: customer.membershipStatus || "Active",
         memberType: customer.memberType || "New",
         trainerRequired: customer.trainerRequired || "No",
-        customerPlan: customer.customerPlan || "Basic",
+        customerPlan: customer.customerPlan || "",
+        plan_id: customer.planId ? String(customer.planId) : "", // Convert to string for select
         customerWeight: (customer.customerWeight || "").replace(" kg", ""),
         customerAge: customer.customerAge || "",
-        monthlyFee: (customer.monthlyFee || "").replace(/[^0-9]/g, ''),
+        monthlyFee: customer.monthlyFee ? customer.monthlyFee.replace(/[^0-9]/g, '') : "",
+        registrationFee: customer.registrationFee ? customer.registrationFee.replace(/[^0-9]/g, '') : "",
         feePaidDate: customer.feePaidDate || new Date().toISOString().split('T')[0],
         nextDueDate: customer.nextDueDate || "",
       });
@@ -55,11 +58,41 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
     }
   }, [customer]);
 
+  const [plans, setPlans] = useState([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const paginator = await getPlans({ is_active: true, per_page: 100 });
+        setPlans(paginator?.data || []);
+      } catch (_) {}
+    })();
+  }, [isOpen]);
+
   const labelColor = useColorModeValue("gray.600", "gray.300");
   const textColor = useColorModeValue("gray.700", "white");
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-update monthly fee and registration fee based on selected plan
+      if (field === 'customerPlan') {
+        const selectedPlan = plans.find(p => p.name === value);
+        if (selectedPlan) {
+          updated.monthlyFee = selectedPlan.monthly_fee;
+          updated.registrationFee = selectedPlan.registration_fee;
+          updated.plan_id = selectedPlan.id;
+        } else {
+          // Reset if no plan selected or custom
+          updated.monthlyFee = "";
+          updated.registrationFee = "";
+          updated.plan_id = null;
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const handleFileUpload = (event) => {
@@ -80,7 +113,6 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
     }
   };
 
-  const plans = ["Premium", "Basic", "Standard"];
   const statuses = ["Active", "Inactive"];
   const trainerOptions = ["Yes", "No"];
 
@@ -174,8 +206,29 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
               <HStack spacing={4} w="100%">
                 <FormControl isRequired flex="1">
                   <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Customer Plan</FormLabel>
-                  <Select value={formData.customerPlan} onChange={(e) => handleInputChange("customerPlan", e.target.value)}>
-                    {plans.map(p => <option key={p} value={p}>{p}</option>)}
+                  <Select value={formData.plan_id || ''} onChange={(e) => {
+                    const planId = e.target.value;
+                    const selected = plans.find(p => String(p.id) === String(planId));
+                    if (selected) {
+                      setFormData(prev => ({
+                        ...prev,
+                        plan_id: planId,
+                        customerPlan: selected.name,
+                        monthlyFee: selected.monthly_fee.toString(),
+                        registrationFee: selected.registration_fee.toString(),
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        plan_id: '',
+                        customerPlan: '',
+                        monthlyFee: '',
+                        registrationFee: '',
+                      }));
+                    }
+                  }}>
+                    <option value="">Select plan</option>
+                    {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </Select>
                 </FormControl>
                 <FormControl isRequired flex="1">
@@ -199,7 +252,30 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
                 </FormControl>
                 <FormControl flex="1">
                   <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Monthly Fee (₨)</FormLabel>
-                  <Input value={formData.monthlyFee} onChange={(e) => handleInputChange("monthlyFee", e.target.value.replace(/[^0-9]/g, ''))} />
+                  <NumberInput value={formData.monthlyFee} onChange={(value) => handleInputChange("monthlyFee", value)} min={0} precision={0}>
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+              </HStack>
+
+              <HStack spacing={4} w="100%">
+                <FormControl flex="1">
+                  <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Registration Fee (₨)</FormLabel>
+                  <NumberInput value={formData.registrationFee} onChange={(value) => handleInputChange("registrationFee", value)} min={0} precision={0}>
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+                <FormControl flex="1">
+                  <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Fee Paid Date</FormLabel>
+                  <Input type="date" value={formData.feePaidDate} onChange={(e) => handleInputChange("feePaidDate", e.target.value)} />
                 </FormControl>
               </HStack>
             </VStack>

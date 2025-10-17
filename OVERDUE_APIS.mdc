@@ -1,0 +1,487 @@
+---
+alwaysApply: true
+---
+# Overdue Management System API Documentation
+
+## Overview
+The overdue management system automatically tracks and manages customer payment due dates without requiring external cron jobs. The system runs automatically in the background and provides APIs for manual control.
+
+## Automatic Features
+- **Background Processing**: Automatically checks for overdue customers on every API request
+- **Smart Caching**: Only runs once per hour to maintain performance
+- **Error Resilient**: Logs errors without breaking the application
+- **Recurring Logic**: When customers pay, next due date is calculated from payment date
+
+## API Endpoints
+
+### 1. Get Overdue Statistics
+**Endpoint:** `GET /api/overdue-stats`
+
+**Description:** Get current overdue statistics and system status.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "overdue_customers": 5,
+    "overdue_fees": 8,
+    "last_check": 1697563200
+  }
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Check system status
+const response = await fetch('/api/overdue-stats');
+const data = await response.json();
+
+console.log(`Overdue customers: ${data.data.overdue_customers}`);
+console.log(`Overdue fees: ${data.data.overdue_fees}`);
+```
+
+### 2. Force Update Overdue Status
+**Endpoint:** `POST /api/mark-overdue-fees`
+
+**Description:** Manually trigger overdue status update (bypasses cache).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Updated 5 overdue customers and fees",
+  "data": {
+    "updated_count": 5
+  }
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Force update overdue status
+const response = await fetch('/api/mark-overdue-fees', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+console.log(data.message);
+```
+
+### 3. Get Overdue Customers
+**Endpoint:** `GET /api/overdue-customers`
+
+**Description:** Get list of all customers with overdue payments.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "overdue_customers": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "next_due_date": "2025-10-15",
+        "overdue_days": 5,
+        "subscription_status": "overdue",
+        "monthly_fee_tracking": [
+          {
+            "id": 1,
+            "due_date": "2025-10-15",
+            "amount": 4500.00,
+            "status": "overdue",
+            "days_overdue": 5
+          }
+        ]
+      }
+    ],
+    "total_overdue": 1
+  }
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Get overdue customers for dashboard
+const response = await fetch('/api/overdue-customers');
+const data = await response.json();
+
+data.data.overdue_customers.forEach(customer => {
+  console.log(`${customer.name} is ${customer.overdue_days} days overdue`);
+});
+```
+
+### 4. Get Customer Monthly Tracking
+**Endpoint:** `GET /api/customers/{customer}/monthly-tracking`
+
+**Description:** Get monthly fee tracking history for a specific customer.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "next_due_date": "2025-11-15"
+    },
+    "monthly_tracking": [
+      {
+        "id": 1,
+        "due_date": "2025-10-15",
+        "amount": 4500.00,
+        "status": "paid",
+        "paid_date": "2025-10-18",
+        "days_ago": 5
+      },
+      {
+        "id": 2,
+        "due_date": "2025-11-15",
+        "amount": 4500.00,
+        "status": "pending",
+        "paid_date": null,
+        "days_ago": null
+      }
+    ]
+  }
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Get customer's payment history
+const customerId = 1;
+const response = await fetch(`/api/customers/${customerId}/monthly-tracking`);
+const data = await response.json();
+
+data.data.monthly_tracking.forEach(record => {
+  console.log(`${record.due_date}: ${record.status} - ${record.amount}`);
+});
+```
+
+## Monthly Payment System
+
+### Submit Monthly Payment
+**Endpoint:** `POST /api/fee-submissions/submit`
+
+**Description:** Submit a monthly fee payment with automatic duplicate prevention.
+
+**Request:**
+```json
+{
+  "customer_id": 1,
+  "fee_type": "monthly_fee",
+  "amount": 4500,
+  "payment_date": "2025-10-18",
+  "payment_method": "cash",
+  "notes": "October 2025 payment"
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Fee submitted successfully",
+  "data": {
+    "fee_submission": {
+      "id": 1,
+      "customer_id": 1,
+      "fee_type": "monthly_fee",
+      "amount": 4500.00,
+      "payment_date": "2025-10-18",
+      "payment_method": "cash"
+    },
+    "customer": {
+      "id": 1,
+      "next_due_date": "2025-11-18",
+      "subscription_status": "paid",
+      "overdue_days": 0
+    },
+    "invoice": {
+      "id": 1,
+      "invoice_number": "INV-20251018-0001",
+      "total_amount": 4500.00
+    }
+  }
+}
+```
+
+**Duplicate Payment Error:**
+```json
+{
+  "success": false,
+  "message": "Monthly fee has already been paid for this month",
+  "data": {
+    "customer": {...},
+    "month": 10,
+    "year": 2025
+  }
+}
+```
+
+**Frontend Usage:**
+```javascript
+// Submit monthly payment
+const submitPayment = async (customerId, amount, paymentDate) => {
+  try {
+    const response = await fetch('/api/fee-submissions/submit', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_id: customerId,
+        fee_type: 'monthly_fee',
+        amount: amount,
+        payment_date: paymentDate,
+        payment_method: 'cash'
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('Payment successful!');
+      console.log(`Next due date: ${data.data.customer.next_due_date}`);
+    } else {
+      console.error(data.message);
+    }
+  } catch (error) {
+    console.error('Payment failed:', error);
+  }
+};
+```
+
+## Frontend Integration Examples
+
+### 1. Dashboard Overdue Widget
+```javascript
+// Create overdue customers widget
+const OverdueWidget = () => {
+  const [overdueStats, setOverdueStats] = useState(null);
+  const [overdueCustomers, setOverdueCustomers] = useState([]);
+
+  useEffect(() => {
+    // Load overdue statistics
+    fetch('/api/overdue-stats')
+      .then(res => res.json())
+      .then(data => setOverdueStats(data.data));
+
+    // Load overdue customers
+    fetch('/api/overdue-customers')
+      .then(res => res.json())
+      .then(data => setOverdueCustomers(data.data.overdue_customers));
+  }, []);
+
+  return (
+    <div className="overdue-widget">
+      <h3>Overdue Payments</h3>
+      <p>Customers: {overdueStats?.overdue_customers || 0}</p>
+      <p>Fees: {overdueStats?.overdue_fees || 0}</p>
+      
+      {overdueCustomers.map(customer => (
+        <div key={customer.id} className="overdue-customer">
+          <span>{customer.name}</span>
+          <span>{customer.overdue_days} days overdue</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+### 2. Customer Payment History
+```javascript
+// Display customer payment history
+const CustomerPaymentHistory = ({ customerId }) => {
+  const [tracking, setTracking] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/customers/${customerId}/monthly-tracking`)
+      .then(res => res.json())
+      .then(data => setTracking(data.data));
+  }, [customerId]);
+
+  return (
+    <div className="payment-history">
+      <h3>Payment History for {tracking?.customer.name}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Due Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Paid Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tracking?.monthly_tracking.map(record => (
+            <tr key={record.id} className={record.status}>
+              <td>{record.due_date}</td>
+              <td>PKR {record.amount}</td>
+              <td>{record.status}</td>
+              <td>{record.paid_date || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+```
+
+### 3. Monthly Payment Form
+```javascript
+// Monthly payment submission form
+const MonthlyPaymentForm = ({ customerId, onPaymentSuccess }) => {
+  const [formData, setFormData] = useState({
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'cash',
+    notes: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch('/api/fee-submissions/submit', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customer_id: customerId,
+          fee_type: 'monthly_fee',
+          ...formData
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Payment submitted successfully!');
+        onPaymentSuccess(data.data);
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      alert('Payment failed. Please try again.');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="number"
+        placeholder="Amount"
+        value={formData.amount}
+        onChange={(e) => setFormData({...formData, amount: e.target.value})}
+        required
+      />
+      <input
+        type="date"
+        value={formData.payment_date}
+        onChange={(e) => setFormData({...formData, payment_date: e.target.value})}
+        required
+      />
+      <select
+        value={formData.payment_method}
+        onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+      >
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="digital_wallet">Digital Wallet</option>
+      </select>
+      <button type="submit">Submit Payment</button>
+    </form>
+  );
+};
+```
+
+## System Behavior
+
+### Automatic Overdue Detection
+- Runs automatically on every API request
+- Only processes once per hour (cached)
+- Updates customer status to "overdue" when due date passes
+- Creates monthly fee tracking records
+
+### Payment Processing
+- Prevents duplicate payments for same month
+- Calculates next due date from payment date
+- Resets overdue status when payment is made
+- Creates next month's tracking record
+
+### Recurring Logic
+- Payment on Nov 18th → Next due Dec 18th
+- Overdue customer pays → Status resets to "paid"
+- Automatic tracking record creation
+- Smart duplicate prevention
+
+## Error Handling
+
+### Common Error Responses
+```json
+// Duplicate payment
+{
+  "success": false,
+  "message": "Monthly fee has already been paid for this month",
+  "data": {
+    "customer": {...},
+    "month": 10,
+    "year": 2025
+  }
+}
+
+// Validation error
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "amount": ["The amount field is required."]
+  }
+}
+```
+
+### Frontend Error Handling
+```javascript
+const handleApiError = (response) => {
+  if (!response.success) {
+    if (response.message.includes('already been paid')) {
+      // Show duplicate payment warning
+      showWarning('This customer has already paid for this month.');
+    } else if (response.errors) {
+      // Show validation errors
+      Object.values(response.errors).forEach(error => {
+        showError(error[0]);
+      });
+    } else {
+      // Show generic error
+      showError(response.message);
+    }
+  }
+};
+```
+
+## Best Practices
+
+1. **Check Overdue Status**: Always check overdue stats before displaying customer lists
+2. **Handle Duplicates**: Implement proper error handling for duplicate payments
+3. **Real-time Updates**: Refresh data after successful payments
+4. **User Feedback**: Show clear messages for payment success/failure
+5. **Date Validation**: Ensure payment dates are valid and not in the future
+6. **Status Indicators**: Use visual indicators for overdue vs paid status
+
+This system provides complete overdue management without requiring external cron jobs, running automatically in the background while providing manual control when needed.

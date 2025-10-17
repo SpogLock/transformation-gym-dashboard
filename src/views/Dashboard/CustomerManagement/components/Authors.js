@@ -40,21 +40,24 @@ import {
   Checkbox,
   Avatar,
 } from "@chakra-ui/react";
-import { ChevronDownIcon, PhoneIcon, EmailIcon, StarIcon, CloseIcon, SettingsIcon, HamburgerIcon, AttachmentIcon, DownloadIcon, AddIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, PhoneIcon, EmailIcon, StarIcon, CloseIcon, SettingsIcon, HamburgerIcon, AttachmentIcon, DownloadIcon, AddIcon, RepeatIcon } from "@chakra-ui/icons";
+import { forceMarkOverdueFees } from "services/overdueService";
 // Custom components
 import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import StockTableRow from "components/Tables/StockTableRow";
 import AddCustomerModal from "components/Modals/AddCustomerModal";
+import PlansModal from "components/Modals/PlansModal";
 import EditCustomerModal from "components/Modals/EditCustomerModal";
 import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { useSearch } from "contexts/SearchContext";
-import { getCustomers, createCustomer, uploadCustomerProfilePicture } from "services/customerService";
+import { useCustomers } from "contexts/CustomerContext";
 import { API_BASE_URL } from "services/api";
 import { useToast } from "@chakra-ui/react";
 import EmptyState from "components/EmptyState/EmptyState";
+import AppLoader from "components/Loaders/AppLoader";
 
 
 const Authors = ({ title, captions, data }) => {
@@ -65,6 +68,7 @@ const Authors = ({ title, captions, data }) => {
   const cardLabelColor = useColorModeValue("gray.600", "gray.300");
   const cardIconColor = useColorModeValue("gray.500", "gray.400");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const plansDisclosure = useDisclosure();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const isTablet = useBreakpointValue({ base: false, md: true, lg: false });
   const [hoveredCustomer, setHoveredCustomer] = useState(null);
@@ -80,9 +84,9 @@ const Authors = ({ title, captions, data }) => {
     return Object.values(filters).filter(filter => filter !== '').length;
   };
   
-  // Customer management data
+  // Customer management data from context
+  const { customers, loading, fetchCustomers, addCustomer, editCustomer: updateCustomer, removeCustomer } = useCustomers();
   const [stockData, setStockData] = useState([]);
-  const [loading, setLoading] = useState(false);
   const toast = useToast();
   const [editCustomer, setEditCustomer] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -91,6 +95,20 @@ const Authors = ({ title, captions, data }) => {
     const toTitle = (val) => {
       if (!val || typeof val !== 'string') return '';
       return val.charAt(0).toUpperCase() + val.slice(1);
+    };
+    
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
+      }
     };
     const normalizeImageUrl = (url) => {
       if (url === null || url === undefined) return undefined;
@@ -126,29 +144,20 @@ const Authors = ({ title, captions, data }) => {
       address: c.address || "",
       registrationDate: (c.created_at || '').split('T')[0] || '',
       trainerRequired: c.has_trainer ? (c.trainer_name ? `Yes` : 'Yes') : 'No',
-      customerPlan: c.plan_display || c.plan || '',
+      customerPlan: c.plan_display || c.plan || c.plan_name || '',
+      planId: c.plan_id || c.planId || null, // Add planId for edit modal
       customerWeight: c.weight ? `${parseFloat(c.weight).toFixed(0)} kg` : '',
       customerAge: c.age ? `${c.age}` : '',
-      monthlyFee: c.monthly_fee ? `₨${parseInt(c.monthly_fee).toLocaleString()}` : '',
+      monthlyFee: c.monthly_fee ? `₨${(Number(c.monthly_fee) > 10000 ? Number(c.monthly_fee) / 100 : Number(c.monthly_fee)).toLocaleString()}` : '',
+      registrationFee: c.registration_fee ? `₨${Number(c.registration_fee).toLocaleString()}` : '', // Add registration fee
       feePaidDate: c.last_payment_date || '',
-      nextDueDate: c.next_due_date || '',
+      nextDueDate: formatDate(c.next_due_date),
     };
   };
 
-  const loadCustomers = async () => {
-    setLoading(true);
-    try {
-      const apiFilters = {};
-      if (filters.membershipStatus) apiFilters.status = filters.membershipStatus.toLowerCase();
-      if (filters.customerPlan) apiFilters.plan = filters.customerPlan.toLowerCase();
-      if (filters.feeStatus) apiFilters.subscription_status = filters.feeStatus.toLowerCase();
-      if (filters.trainerRequired) apiFilters.has_trainer = filters.trainerRequired === 'Yes' ? 'true' : 'false';
-      if (searchQuery) apiFilters.search = searchQuery;
-
-      const data = await getCustomers(apiFilters);
-      const rows = (data.customers || []).map(mapApiCustomerToRow);
-      setStockData(rows);
-    } catch (error) {
+  // Fetch customers on mount (only if not already cached)
+  useEffect(() => {
+    fetchCustomers().catch((error) => {
       toast({
         title: "Failed to load customers",
         description: error.message,
@@ -157,14 +166,43 @@ const Authors = ({ title, captions, data }) => {
         isClosable: true,
         position: "top-right",
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+  }, []);
 
+  // Apply local filtering and searching to cached customer data
   useEffect(() => {
-    loadCustomers();
-  }, [searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired]);
+    let filtered = [...customers];
+
+    // Apply filters
+    if (filters.membershipStatus) {
+      filtered = filtered.filter(c => 
+        (c.status_display || c.status || "").toLowerCase() === filters.membershipStatus.toLowerCase()
+      );
+    }
+    if (filters.customerPlan) {
+      filtered = filtered.filter(c => 
+        (c.plan_display || c.plan || "").toLowerCase() === filters.customerPlan.toLowerCase()
+      );
+    }
+    if (filters.trainerRequired) {
+      const requiresTrainer = filters.trainerRequired === 'Yes';
+      filtered = filtered.filter(c => c.has_trainer === requiresTrainer);
+    }
+
+    // Apply search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        (c.name || "").toLowerCase().includes(query) ||
+        (c.email || "").toLowerCase().includes(query) ||
+        (c.mobile_number || "").toLowerCase().includes(query)
+      );
+    }
+
+    // Map to display format
+    const rows = filtered.map(mapApiCustomerToRow);
+    setStockData(rows);
+  }, [customers, searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired]);
 
   const handleAddCustomer = async (newCustomer) => {
     // Map UI fields to API payload where possible
@@ -175,26 +213,24 @@ const Authors = ({ title, captions, data }) => {
       address: newCustomer.address,
       type: (newCustomer.memberType || '').toLowerCase(),
       status: (newCustomer.membershipStatus || '').toLowerCase(),
-      plan: (newCustomer.customerPlan || '').toLowerCase(),
+      plan_id: newCustomer.plan_id ? parseInt(newCustomer.plan_id) : null, // Send plan_id as integer
+      // Invoice settings per INVOICE_SETTINGS.mdc
+      generate_registration_invoice: true,
+      registration_invoice_paid: true,
+      registration_payment_method: 'cash',
+      registration_payment_date: newCustomer.feePaidDate,
+      registration_invoice_notes: 'Registration at signup',
+      // keep legacy monetary fields if backend accepts them (harmless)
       monthly_fee: newCustomer.monthlyFee ? parseInt((newCustomer.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
+      registration_fee: newCustomer.registrationFee ? parseInt((newCustomer.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
       has_trainer: newCustomer.trainerRequired === 'Yes',
-      last_payment_date: newCustomer.feePaidDate,
-      next_due_date: newCustomer.nextDueDate,
+      // let backend compute payment dates when invoice is generated
       age: newCustomer.customerAge ? parseInt((newCustomer.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
       weight: newCustomer.customerWeight ? parseFloat((newCustomer.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
-      // Ignore fields not present in UI as requested
     };
 
     try {
-      const created = await createCustomer(payload);
-      // If user selected a file in modal, try uploading it now using new id
-      if (newCustomer._selectedFile && created?.id) {
-        try {
-          await uploadCustomerProfilePicture(created.id, newCustomer._selectedFile);
-        } catch (e) {
-          // Non-fatal; image upload failure shouldn't block customer creation
-        }
-      }
+      await addCustomer(payload, newCustomer._selectedFile);
       toast({
         title: "Customer added",
         status: "success",
@@ -202,8 +238,6 @@ const Authors = ({ title, captions, data }) => {
         isClosable: true,
         position: "top-right",
       });
-      // Refresh list from API to stay in sync
-      loadCustomers();
     } catch (error) {
       toast({
         title: "Failed to add customer",
@@ -213,7 +247,6 @@ const Authors = ({ title, captions, data }) => {
         isClosable: true,
         position: "top-right",
       });
-      // Fallback: keep local add if API fails? We skip to avoid drift
     }
   };
 
@@ -232,20 +265,18 @@ const Authors = ({ title, captions, data }) => {
         address: formData.address,
         type: (formData.memberType || '').toLowerCase(),
         status: (formData.membershipStatus || '').toLowerCase(),
-        plan: (formData.customerPlan || '').toLowerCase(),
+        plan_id: formData.plan_id ? parseInt(formData.plan_id) : null, // Send plan_id as integer
+        plan: formData.customerPlan ? formData.customerPlan.toLowerCase() : null, // Also send plan name as fallback
         monthly_fee: formData.monthlyFee ? parseInt((formData.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
+        registration_fee: formData.registrationFee ? parseInt((formData.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
         has_trainer: formData.trainerRequired === 'Yes',
         age: formData.customerAge ? parseInt((formData.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
         weight: formData.customerWeight ? parseFloat((formData.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
       };
-      await (await import('services/customerService')).updateCustomer(editCustomer.id, updatePayload);
-      if (selectedFile) {
-        try { await uploadCustomerProfilePicture(editCustomer.id, selectedFile); } catch (_) {}
-      }
+      await updateCustomer(editCustomer.id, updatePayload, selectedFile);
       setIsEditOpen(false);
       setEditCustomer(null);
       toast({ title: 'Customer updated', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
-      loadCustomers();
     } catch (error) {
       toast({ title: 'Update failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
     }
@@ -253,9 +284,8 @@ const Authors = ({ title, captions, data }) => {
 
   const handleDelete = async (customer) => {
     try {
-      await (await import('services/customerService')).deleteCustomer(customer.id);
+      await removeCustomer(customer.id);
       toast({ title: 'Customer deleted', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
-      loadCustomers();
     } catch (error) {
       toast({ title: 'Delete failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
     }
@@ -347,9 +377,20 @@ const Authors = ({ title, captions, data }) => {
 
   const filteredCustomers = getFilteredCustomers();
 
+  const handleRefreshOverdueAll = async () => {
+    try {
+      const res = await forceMarkOverdueFees();
+      toast({ title: 'Overdue refreshed', description: res.message || 'Statuses updated', status: 'success', duration: 2500, isClosable: true, position: 'top-right' });
+      await fetchCustomers(true);
+    } catch (e) {
+      const message = (e && e.message) ? e.message : 'Failed updating overdue';
+      toast({ title: 'Overdue update failed', description: message, status: 'error', duration: 3500, isClosable: true, position: 'top-right' });
+    }
+  };
+
   // Navigate to customer profile
   const handleCustomerClick = (customer) => {
-    history.push(`/admin/profile?customerId=${customer.id}`);
+    history.push(`/admin/customer-profile/${customer.id}`);
   };
 
   // Hover modal handlers
@@ -477,24 +518,24 @@ const Authors = ({ title, captions, data }) => {
       {/* Header with Picture, Name and Status */}
       <Flex justifyContent="space-between" alignItems="center" mb={3}>
         <HStack spacing={3}>
-            <Box
-              w="50px"
-              h="50px"
-              borderRadius="full"
-              overflow="hidden"
-              border="2px solid"
-              borderColor={borderColor}
-              onMouseEnter={(e) => handleMouseEnter(customer, e)}
-              onMouseLeave={handleMouseLeave}
-              cursor="pointer"
-              _hover={{
-                borderColor: "brand.300",
-                transform: "scale(1.1)",
-              }}
-              transition="all 0.2s ease-in-out"
-            >
+          <Box
+            w="50px"
+            h="50px"
+            borderRadius="full"
+            overflow="hidden"
+            border="2px solid"
+            borderColor={borderColor}
+            onMouseEnter={(e) => handleMouseEnter(customer, e)}
+            onMouseLeave={handleMouseLeave}
+            cursor="pointer"
+            _hover={{
+              borderColor: "brand.300",
+              transform: "scale(1.1)",
+            }}
+            transition="all 0.2s ease-in-out"
+          >
               <Avatar name={customer.memberName} src={customer.picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
-            </Box>
+          </Box>
           <VStack align="start" spacing={1}>
             <Text fontSize="lg" fontWeight="bold" color={cardTextColor}>
               {customer.memberName}
@@ -654,7 +695,7 @@ const Authors = ({ title, captions, data }) => {
           >
             Customer Management
           </Text>
-          <Flex gap="4px" flexShrink={0} ms={{ base: "auto", md: "auto" }}>
+          <Flex gap="6px" flexShrink={0} ms={{ base: "auto", md: "auto" }}>
             <Menu>
               <MenuButton
                 as={Button}
@@ -668,6 +709,11 @@ const Authors = ({ title, captions, data }) => {
                 Actions
               </MenuButton>
               <MenuList>
+                <MenuItem
+                  onClick={plansDisclosure.onOpen}
+                >
+                  Manage Plans
+                </MenuItem>
                 <MenuItem
                   icon={<SettingsIcon />}
                   position="relative"
@@ -710,11 +756,16 @@ const Authors = ({ title, captions, data }) => {
                 </MenuItem>
               </MenuList>
             </Menu>
+            <Button size="xs" variant="outline" leftIcon={<RepeatIcon />} onClick={handleRefreshOverdueAll}>
+              Refresh Overdue
+            </Button>
           </Flex>
         </Flex>
       </CardHeader>
       <CardBody>
-        {stockData.length === 0 ? (
+        {loading ? (
+          <AppLoader message="Loading customers..." fullHeight />
+        ) : stockData.length === 0 ? (
           <EmptyState
             title="No customers found"
             description="Try adjusting filters or add a new customer to get started."
@@ -785,7 +836,7 @@ const Authors = ({ title, captions, data }) => {
                          transform: "scale(1.05)",
                        }}
                        transition="all 0.2s ease-in-out"
-                    >
+                     >
                       <Avatar
                         name={customer.memberName}
                         src={customer.picture || undefined}
@@ -795,7 +846,7 @@ const Authors = ({ title, captions, data }) => {
                         color="white"
                         fontWeight="bold"
                         title={customer.memberName}
-                      />
+                       />
                      </Box>
                      <VStack align="start" spacing={0}>
                        <Text fontSize="md" fontWeight="bold" color={textColor}>
@@ -917,7 +968,7 @@ const Authors = ({ title, captions, data }) => {
                        </Text>
                      </VStack>
                    </HStack>
-                  <Badge
+                   <Badge
                     colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
                      variant="subtle"
                      px={3}
@@ -1098,6 +1149,11 @@ const Authors = ({ title, captions, data }) => {
           </Table>
         )}
       </CardBody>
+      
+      <PlansModal
+        isOpen={plansDisclosure.isOpen}
+        onClose={plansDisclosure.onClose}
+      />
       
       <AddCustomerModal
         isOpen={isOpen}

@@ -18,6 +18,7 @@ import {
   IconButton,
   Avatar,
 } from "@chakra-ui/react";
+import { useHistory } from "react-router-dom";
 import {
   EditIcon,
   DeleteIcon,
@@ -54,6 +55,7 @@ function StockTableRow(props) {
     onEdit,
     onDelete
   } = props;
+  const history = useHistory();
   const textColor = useColorModeValue("gray.700", "white");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const hoverBg = useColorModeValue("brand.50", "brand.900");

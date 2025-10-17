@@ -32,6 +32,7 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import { AttachmentIcon, AddIcon, DeleteIcon } from "@chakra-ui/icons";
+import { getPlans } from "services/planService";
 import { uploadCustomerProfilePicture } from "services/customerService";
 
 const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
@@ -45,13 +46,19 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     membershipStatus: "Active",
     memberType: "New",
     trainerRequired: "No",
-    customerPlan: "Basic",
+    customerPlan: "",
+    plan_id: null,
     customerWeight: "",
     customerAge: "",
     monthlyFee: "",
-    registrationFee: "1000",
+    registrationFee: "",
     feePaidDate: new Date().toISOString().split('T')[0],
-    nextDueDate: "",
+    nextDueDate: (() => {
+      const paidDate = new Date();
+      const nextDue = new Date(paidDate);
+      nextDue.setMonth(nextDue.getMonth() + 1);
+      return nextDue.toISOString().split('T')[0];
+    })(),
   });
 
   const fileInputRef = useRef(null);
@@ -60,6 +67,18 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [stream, setStream] = useState(null);
   const toast = useToast();
+  const [plans, setPlans] = useState([]);
+  React.useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const paginator = await getPlans({ is_active: true, per_page: 100 });
+        setPlans(paginator?.data || []);
+      } catch (e) {
+        // silent fail
+      }
+    })();
+  }, [isOpen]);
 
   // Glassy background styling
   const modalBg = useColorModeValue(
@@ -89,21 +108,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
         updated.nextDueDate = nextDue.toISOString().split('T')[0];
       }
       
-      // Auto-update monthly fee based on member type and customer plan
-      if (field === 'memberType' || field === 'customerPlan') {
-        const memberType = field === 'memberType' ? value : updated.memberType;
-        const customerPlan = field === 'customerPlan' ? value : updated.customerPlan;
-        
-        if (memberType && customerPlan) {
-          let monthlyFee = "";
-          if (memberType === "New") {
-            monthlyFee = customerPlan === "Basic" ? "4000" : "4500";
-          } else if (memberType === "Old") {
-            monthlyFee = customerPlan === "Basic" ? "3000" : "3500";
-          }
-          updated.monthlyFee = monthlyFee;
-        }
-      }
+      // Remove old auto-calculation logic - now handled by plan selection
       
       return updated;
     });
@@ -185,12 +190,15 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
   };
 
   const handleSubmit = async () => {
+    // Debug: Log form data before submission
+    console.log('📝 Form data before submission:', formData);
+    
     // Generate a new ID for the customer and calculate next due date if not set
     const newCustomer = {
       ...formData,
       id: Date.now(), // Simple ID generation
-      monthlyFee: formData.monthlyFee ? `₨${parseInt(formData.monthlyFee).toLocaleString()}` : "₨0",
-      registrationFee: formData.registrationFee ? `₨${parseInt(formData.registrationFee).toLocaleString()}` : "₨0",
+      monthlyFee: formData.monthlyFee || "₨0",
+      registrationFee: formData.registrationFee || "₨0",
       nextDueDate: formData.nextDueDate || (() => {
         const paidDate = new Date(formData.feePaidDate);
         const nextDue = new Date(paidDate);
@@ -198,6 +206,9 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
         return nextDue.toISOString().split('T')[0];
       })(),
     };
+    
+    // Debug: Log the customer data being passed
+    console.log('📤 Customer data being passed to parent:', newCustomer);
     try {
       await onAddCustomer(newCustomer);
       // Image upload will be handled after server returns the real ID via the list reload.
@@ -208,7 +219,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     
     // Reset form
     setFormData({
-      picture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+      picture: "",
       memberName: "",
       mobileNo: "",
       email: "",
@@ -217,13 +228,19 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
       membershipStatus: "Active",
       memberType: "New",
       trainerRequired: "No",
-      customerPlan: "Basic",
+      customerPlan: "",
+      plan_id: null,
       customerWeight: "",
       customerAge: "",
       monthlyFee: "",
-      registrationFee: "1000",
+      registrationFee: "",
       feePaidDate: new Date().toISOString().split('T')[0],
-      nextDueDate: "",
+      nextDueDate: (() => {
+        const paidDate = new Date();
+        const nextDue = new Date(paidDate);
+        nextDue.setMonth(nextDue.getMonth() + 1);
+        return nextDue.toISOString().split('T')[0];
+      })(),
     });
     
     onClose();
@@ -237,7 +254,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     });
   };
 
-  const plans = ["Premium", "Basic", "Standard"];
+  // Removed static plans; using dynamic plans from API
   const statuses = ["Active", "Inactive"];
   const trainerOptions = ["Yes", "No"];
 
@@ -553,8 +570,28 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                       Customer Plan
                     </FormLabel>
                     <Select
-                      value={formData.customerPlan}
-                      onChange={(e) => handleInputChange("customerPlan", e.target.value)}
+                      value={formData.plan_id || ''}
+                      onChange={(e) => {
+                        const planId = e.target.value;
+                        const selected = plans.find(p => String(p.id) === String(planId));
+                        if (selected) {
+                          setFormData(prev => ({
+                            ...prev,
+                            plan_id: planId,
+                            customerPlan: selected.name,
+                            monthlyFee: `₨${Number(selected.monthly_fee).toLocaleString()}`,
+                            registrationFee: `₨${Number(selected.registration_fee).toLocaleString()}`,
+                          }));
+                        } else {
+                          setFormData(prev => ({
+                            ...prev,
+                            plan_id: '',
+                            customerPlan: '',
+                            monthlyFee: '',
+                            registrationFee: '',
+                          }));
+                        }
+                      }}
                       borderRadius="12px"
                       border="1px solid"
                       borderColor="gray.200"
@@ -563,8 +600,9 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                         boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
                       }}
                     >
-                      {plans.map(plan => (
-                        <option key={plan} value={plan}>{plan}</option>
+                      <option value="">Select plan</option>
+                      {plans.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </Select>
                   </FormControl>
@@ -598,7 +636,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                     </FormLabel>
                     <NumberInput
                       value={formData.customerWeight}
-                      onChange={(value) => handleInputChange("customerWeight", `${value} kg`)}
+                      onChange={(value) => handleInputChange("customerWeight", value)}
                       min={1}
                       max={300}
                       precision={1}
@@ -625,7 +663,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                       Monthly Fee (₨) - Auto-calculated
                     </FormLabel>
                     <Input
-                      value={formData.monthlyFee ? `₨${parseInt(formData.monthlyFee).toLocaleString()}` : "₨0"}
+                      value={formData.monthlyFee || "₨0"}
                       readOnly
                       bg="gray.100"
                       borderRadius="12px"
@@ -637,10 +675,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                       }}
                     />
                     <Text fontSize="xs" color="gray.500" mt={1}>
-                      {formData.memberType === "New" 
-                        ? "New members: ₨4,000 (Basic) / ₨4,500 (Standard/Premium)"
-                        : "Old members: ₨3,000 (Basic) / ₨3,500 (Standard/Premium)"
-                      }
+                      Fee is automatically set based on selected plan
                     </Text>
                   </FormControl>
                 </HStack>
@@ -659,29 +694,23 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                 <HStack spacing={4} w="100%">
                   <FormControl isRequired flex="1">
                     <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">
-                      Registration Fee (₨)
+                      Registration Fee (₨) - Auto-calculated
                     </FormLabel>
-                    <NumberInput
-                      value={formData.registrationFee}
-                      onChange={(value) => handleInputChange("registrationFee", value)}
-                      min={0}
-                      precision={0}
-                    >
-                      <NumberInputField
-                        placeholder="Registration fee"
-                        borderRadius="12px"
-                        border="1px solid"
-                        borderColor="gray.200"
-                        _focus={{
-                          borderColor: "brand.500",
-                          boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
-                        }}
-                      />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
+                    <Input
+                      value={formData.registrationFee || "₨0"}
+                      readOnly
+                      bg="gray.100"
+                      borderRadius="12px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _focus={{
+                        borderColor: "brand.500",
+                        boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
+                      }}
+                    />
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      Fee is automatically set based on selected plan
+                    </Text>
                   </FormControl>
                   
                   <FormControl isRequired flex="1">

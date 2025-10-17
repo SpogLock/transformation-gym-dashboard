@@ -1,0 +1,214 @@
+---
+alwaysApply: true
+---
+# Optimization Rules
+
+## Data Caching & API Calls
+
+### Always use Context-based caching for frequently accessed API data
+
+**Rule**: When data is accessed across multiple pages or components, implement a React Context provider with caching to prevent redundant API calls.
+
+**Implementation**:
+```javascript
+// Create Context with caching (e.g., CustomerContext.js)
+const [data, setData] = useState([]);
+const initializedRef = useRef(false);
+const loadingRef = useRef(false);
+
+const fetchData = useCallback(async (force = false) => {
+  if (initializedRef.current && !force) return data; // Return cached
+  if (loadingRef.current) return data; // Prevent concurrent calls
+  
+  loadingRef.current = true;
+  setLoading(true);
+  try {
+    const response = await apiCall();
+    setData(response);
+    initializedRef.current = true;
+    return response;
+  } finally {
+    setLoading(false);
+    loadingRef.current = false;
+  }
+}, [data]);
+```
+
+**Benefits**:
+- Single API call per session
+- Instant navigation between pages
+- Reduced server load
+- Local filtering/search (instant results)
+
+**Update cache on mutations**:
+```javascript
+// Create
+const addItem = async (data) => {
+  const newItem = await createAPI(data);
+  setItems(prev => [...prev, newItem]);
+  return newItem;
+};
+
+// Update
+const updateItem = async (id, data) => {
+  const updated = await updateAPI(id, data);
+  setItems(prev => prev.map(item => item.id === id ? updated : item));
+  return updated;
+};
+
+// Delete
+const deleteItem = async (id) => {
+  await deleteAPI(id);
+  setItems(prev => prev.filter(item => item.id !== id));
+};
+```
+
+**Apply filters locally**:
+```javascript
+useEffect(() => {
+  let filtered = [...cachedData];
+  
+  // Apply filters on cached data
+  if (filters.status) filtered = filtered.filter(x => x.status === filters.status);
+  if (searchQuery) filtered = filtered.filter(x => x.name.includes(searchQuery));
+  
+  setDisplayData(filtered);
+}, [cachedData, filters, searchQuery]);
+```
+
+---
+
+## Loading States
+
+### Always use AppLoader component with theme colors
+
+**Rule**: Never use generic spinners or custom loading indicators. Always use the centralized `AppLoader` component for consistent, themed loading UX.
+
+**Usage**:
+```javascript
+import AppLoader from "components/Loaders/AppLoader";
+
+// Page-level loading (full height)
+if (loading) {
+  return <AppLoader message="Loading customer data..." fullHeight />;
+}
+
+// Inline loading (auto height)
+if (loading) {
+  return <AppLoader message="Updating..." />;
+}
+
+// Default message
+if (loading) {
+  return <AppLoader fullHeight />;
+}
+```
+
+**Props**:
+- `message` (string): Descriptive text shown below spinner (default: "Loading data...")
+- `fullHeight` (boolean): Use `minH="400px"` for page-level components (default: false)
+
+**Best practices**:
+- ✅ Use descriptive messages: "Loading customer profile..." not "Loading..."
+- ✅ Use `fullHeight` for page-level loading states
+- ✅ Show loader BEFORE checking for empty state
+- ✅ Position appropriately based on context
+
+**Pattern**:
+```javascript
+// Correct order
+if (loading) return <AppLoader message="Loading customers..." fullHeight />;
+if (data.length === 0) return <EmptyState />;
+return <DataList data={data} />;
+```
+
+---
+
+## Decision Checklist
+
+Before implementing data fetching:
+
+1. **Is data accessed from multiple pages?**
+   - YES → Create Context provider with caching
+   - NO → Use local `useState`
+
+2. **Showing loading state?**
+   - YES → Use `<AppLoader />` with descriptive message
+   - NO → Consider if users need feedback
+
+3. **Has filters/search?**
+   - Cached data exists → Filter locally (instant)
+   - No cache → Server-side filtering for large datasets
+
+4. **CRUD operations?**
+   - YES → Update cache after successful operation
+   - NO → N/A
+
+5. **Empty state scenario?**
+   - YES → Show `<EmptyState />` with clear CTA
+   - NO → N/A
+
+---
+
+## Examples from Codebase
+
+### ✅ Good: CustomerContext (cached API data)
+```javascript
+// src/contexts/CustomerContext.js
+export const useCustomers = () => {
+  const { customers, loading, fetchCustomers, addCustomer, editCustomer, removeCustomer } = useContext(CustomerContext);
+  // Data cached globally, fetch once, reuse everywhere
+};
+```
+
+### ✅ Good: Using AppLoader
+```javascript
+// src/views/Dashboard/Profile/index.js
+if (loading) {
+  return <AppLoader message="Loading customer profile..." fullHeight />;
+}
+```
+
+### ✅ Good: Local filtering on cached data
+```javascript
+// src/views/Dashboard/CustomerManagement/components/Authors.js
+useEffect(() => {
+  let filtered = [...customers]; // From cache
+  if (filters.membershipStatus) filtered = filtered.filter(c => c.status === filters.membershipStatus);
+  if (searchQuery) filtered = filtered.filter(c => c.name.includes(searchQuery));
+  setStockData(filtered.map(mapApiCustomerToRow));
+}, [customers, searchQuery, filters]);
+```
+
+### ❌ Bad: Fetching on every mount
+```javascript
+// DON'T DO THIS
+useEffect(() => {
+  fetchCustomers(); // API call every time component mounts
+}, []);
+```
+
+### ❌ Bad: Custom/generic loaders
+```javascript
+// DON'T DO THIS
+<Spinner size="xl" color="blue.500" />
+<Text>Loading...</Text>
+
+// DO THIS INSTEAD
+<AppLoader message="Loading customer data..." fullHeight />
+```
+
+---
+
+## Performance Expectations
+
+Following these rules should achieve:
+- **90%+ reduction** in API calls for cached resources
+- **<100ms** filter/search response time (local operations)
+- **Consistent** loading UX across all pages
+- **Instant** navigation for previously visited pages
+
+---
+
+**When in doubt**: Cache it, use AppLoader, filter locally.
+

@@ -18,7 +18,7 @@ import apiFetch from './api';
 export const registerUser = async (userData) => {
   const data = await apiFetch('/register', {
     method: 'POST',
-    body: JSON.stringify(userData),
+    body: userData, // Don't stringify - apiFetch will do it
     skipAuth: true,
   });
 
@@ -43,7 +43,7 @@ export const registerUser = async (userData) => {
 export const loginUser = async (credentials) => {
   const data = await apiFetch('/login', {
     method: 'POST',
-    body: JSON.stringify(credentials),
+    body: credentials, // Don't stringify - apiFetch will do it
     skipAuth: true,
   });
 
@@ -109,7 +109,7 @@ export const getUserProfile = async () => {
 export const updateUserProfile = async (profileData) => {
   const data = await apiFetch('/profile', {
     method: 'PUT',
-    body: JSON.stringify(profileData),
+    body: profileData, // Don't stringify - apiFetch will do it
   });
 
   if (data.success) {
@@ -132,7 +132,7 @@ export const updateUserProfile = async (profileData) => {
 export const changePassword = async (passwordData) => {
   const data = await apiFetch('/change-password', {
     method: 'POST',
-    body: JSON.stringify(passwordData),
+    body: passwordData, // Don't stringify - apiFetch will do it
   });
 
   if (data.success) {

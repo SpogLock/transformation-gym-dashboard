@@ -29,7 +29,7 @@ export const getCustomers = async (filters = {}) => {
 export const createCustomer = async (customerData) => {
   const data = await apiFetch('/customers', {
     method: 'POST',
-    body: JSON.stringify(customerData),
+    body: customerData, // Don't stringify - apiFetch will do it
   });
   if (data.success) {
     return data.data.customer;
@@ -52,7 +52,7 @@ export const getCustomer = async (customerId) => {
 export const updateCustomer = async (customerId, updateData) => {
   const data = await apiFetch(`/customers/${customerId}`, {
     method: 'PUT',
-    body: JSON.stringify(updateData),
+    body: updateData, // Don't stringify - apiFetch will do it
   });
   if (data.success) {
     return data.data.customer;
@@ -69,6 +69,18 @@ export const deleteCustomer = async (customerId) => {
     return true;
   }
   throw new Error(data.message || 'Failed to delete customer');
+};
+
+// Generate a registration invoice later for an existing customer
+export const createRegistrationInvoice = async (customerId, payload = {}) => {
+  const data = await apiFetch(`/customers/${customerId}/registration-invoice`, {
+    method: 'POST',
+    body: payload,
+  });
+  if (data.success) {
+    return data.data; // may include invoice details
+  }
+  throw new Error(data.message || 'Failed to create registration invoice');
 };
 
 // Get statistics
