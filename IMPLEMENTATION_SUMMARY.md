@@ -240,7 +240,7 @@ if (isAdmin()) {
 ### API Base URL
 Located in `src/services/api.js`:
 ```javascript
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api';
 ```
 
 Change this for different environments (development, staging, production).
