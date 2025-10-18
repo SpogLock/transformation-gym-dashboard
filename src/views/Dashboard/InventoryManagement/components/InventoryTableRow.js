@@ -16,6 +16,7 @@ import {
   MenuList,
   MenuItem,
   IconButton,
+  Portal,
 } from "@chakra-ui/react";
 import {
   EditIcon,
@@ -192,7 +193,8 @@ function InventoryTableRow(props) {
               zIndex: 1000
             }}
           />
-          <MenuList zIndex={99999} borderRadius="lg" overflow="hidden" data-menu="true">
+          <Portal>
+            <MenuList zIndex={9999} borderRadius="lg" overflow="hidden" data-menu="true" boxShadow="0 10px 25px rgba(0, 0, 0, 0.15)">
             <MenuItem
               icon={<EditIcon />}
               onClick={(e) => {
@@ -229,7 +231,8 @@ function InventoryTableRow(props) {
             >
               Delete
             </MenuItem>
-          </MenuList>
+            </MenuList>
+          </Portal>
         </Menu>
       </Td>
     </Tr>

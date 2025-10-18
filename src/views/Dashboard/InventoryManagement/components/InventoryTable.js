@@ -215,9 +215,9 @@ const InventoryTable = ({ title }) => {
             >
               Add Product
             </Button>
-          </Flex>
-        </CardHeader>
-        <CardBody>
+        </Flex>
+      </CardHeader>
+      <CardBody overflow="visible">
           <EmptyState
             title="No Products Yet"
             description="Start building your inventory by adding your first product. Track stock, manage pricing, and monitor your product catalog all in one place."
@@ -334,7 +334,7 @@ const InventoryTable = ({ title }) => {
   ];
 
   return (
-    <Card overflowX={{ sm: "scroll", xl: "hidden" }}>
+    <Card overflowX={{ sm: "scroll", xl: "hidden" }} position="relative" zIndex={1}>
       <CardHeader p='6px 0px 22px 0px'>
         <Flex 
           justifyContent={{ base: "flex-start", md: "space-between" }} 
@@ -612,12 +612,12 @@ const InventoryTable = ({ title }) => {
           // Desktop Table View
           <Table 
             variant='simple' 
-            color={textColor} 
+            color={textColor}
             size="md"
             border="1px solid"
             borderColor={borderColor}
             borderRadius="12px"
-            overflow="hidden"
+            overflow="visible"
             boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
           >
             <Thead>

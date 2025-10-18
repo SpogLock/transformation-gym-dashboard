@@ -10,11 +10,17 @@ import {
   MenuItem,
   IconButton,
   Box,
+  Portal,
 } from "@chakra-ui/react";
 import { EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { useAuth } from "contexts/AuthContext";
 
 function StaffTableRow(props) {
   const { staff, onEdit, onDelete } = props;
+  const { user } = useAuth();
+  
+  // Check if this is the current user's account
+  const isCurrentUser = user && (user.id === staff.id || user.email === staff.email);
 
   return (
     <Tr
@@ -55,14 +61,24 @@ function StaffTableRow(props) {
             h="40px"
             _hover={{ bg: "gray.100", color: "gray.800" }}
           />
-          <MenuList>
-            <MenuItem icon={<EditIcon />} onClick={() => onEdit(staff)}>
-              Edit
-            </MenuItem>
-            <MenuItem icon={<DeleteIcon />} onClick={() => onDelete(staff)} color="red.500" _hover={{ bg: "red.50" }}>
-              Delete
-            </MenuItem>
-          </MenuList>
+          <Portal>
+            <MenuList zIndex={9999} boxShadow="0 10px 25px rgba(0, 0, 0, 0.15)">
+              <MenuItem icon={<EditIcon />} onClick={() => onEdit(staff)}>
+                Edit
+              </MenuItem>
+              <MenuItem 
+                icon={<DeleteIcon />} 
+                onClick={() => onDelete(staff)} 
+                color="red.500" 
+                _hover={{ bg: "red.50" }}
+                isDisabled={isCurrentUser}
+                opacity={isCurrentUser ? 0.5 : 1}
+                cursor={isCurrentUser ? "not-allowed" : "pointer"}
+              >
+                {isCurrentUser ? "Cannot delete your own account" : "Delete"}
+              </MenuItem>
+            </MenuList>
+          </Portal>
         </Menu>
       </Td>
     </Tr>

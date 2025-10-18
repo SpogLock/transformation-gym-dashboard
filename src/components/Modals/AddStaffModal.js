@@ -23,8 +23,8 @@ const AddStaffModal = ({ isOpen, onClose, onAddStaff }) => {
     email: "",
     phone: "",
     role: "staff",
-    username: "",
     password: "",
+    password_confirmation: "",
   });
 
   const toast = useToast();
@@ -45,10 +45,10 @@ const AddStaffModal = ({ isOpen, onClose, onAddStaff }) => {
   };
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.email || !formData.role || !formData.username || !formData.password) {
+    if (!formData.name || !formData.email || !formData.role || !formData.password || !formData.password_confirmation) {
       toast({
         title: "Missing fields",
-        description: "Please fill in name, email, role, username and password.",
+        description: "Please fill in all required fields.",
         status: "warning",
         duration: 3000,
         isClosable: true,
@@ -56,10 +56,21 @@ const AddStaffModal = ({ isOpen, onClose, onAddStaff }) => {
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.password.length < 8) {
       toast({
         title: "Weak password",
-        description: "Password must be at least 6 characters.",
+        description: "Password must be at least 8 characters.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (formData.password !== formData.password_confirmation) {
+      toast({
+        title: "Password mismatch",
+        description: "Password and confirmation do not match.",
         status: "warning",
         duration: 3000,
         isClosable: true,
@@ -69,28 +80,16 @@ const AddStaffModal = ({ isOpen, onClose, onAddStaff }) => {
 
     if (onAddStaff) {
       onAddStaff({
-        id: Date.now().toString(),
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        status: "Active",
-        credentials: {
-          username: formData.username,
-          password: formData.password,
-        },
+        password: formData.password,
+        password_confirmation: formData.password_confirmation,
       });
     }
 
-    toast({
-      title: "Staff added",
-      description: `${formData.name} added as ${formData.role}.`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-
-    setFormData({ name: "", email: "", phone: "", role: "staff", username: "", password: "" });
+    setFormData({ name: "", email: "", phone: "", role: "staff", password: "", password_confirmation: "" });
     onClose();
   };
 
@@ -144,23 +143,24 @@ const AddStaffModal = ({ isOpen, onClose, onAddStaff }) => {
             </FormControl>
 
             <FormControl isRequired>
-              <FormLabel color={textColor}>Username</FormLabel>
-              <Input
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="Choose a username"
-              />
-            </FormControl>
-
-            <FormControl isRequired>
               <FormLabel color={textColor}>Password</FormLabel>
               <Input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Set a password"
+                placeholder="Set a password (min 8 characters)"
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel color={textColor}>Confirm Password</FormLabel>
+              <Input
+                type="password"
+                name="password_confirmation"
+                value={formData.password_confirmation}
+                onChange={handleChange}
+                placeholder="Confirm password"
               />
             </FormControl>
           </VStack>
