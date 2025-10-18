@@ -44,6 +44,8 @@ import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import whey_dummy from "assets/img/whey_dummy.png";
+import { getProductsForPOS, getCustomersForPOS, processPOSSale } from "services/posService";
+import AppLoader from "components/Loaders/AppLoader";
 
 const SalesTable = () => {
   const textColor = useColorModeValue("gray.700", "white");
@@ -62,83 +64,60 @@ const SalesTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [discount, setDiscount] = useState(0);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [processing, setProcessing] = useState(false);
 
-  // Sample product data (same as inventory)
-  const sampleProducts = [
-    {
-      id: 1,
-      image: whey_dummy,
-      productName: "Optimum Nutrition Gold Standard Whey",
-      category: "Protein Powder",
-      stockQuantity: 15,
-      costPrice: 4500,
-      sellingPrice: 7500,
-      supplier: "Optimum Nutrition",
-    },
-    {
-      id: 2,
-      image: whey_dummy,
-      productName: "Dymatize ISO100 Whey Protein",
-      category: "Protein Powder",
-      stockQuantity: 22,
-      costPrice: 5200,
-      sellingPrice: 8500,
-      supplier: "Dymatize Nutrition",
-    },
-    {
-      id: 3,
-      image: whey_dummy,
-      productName: "MuscleTech Creatine Monohydrate",
-      category: "Creatine",
-      stockQuantity: 45,
-      costPrice: 1800,
-      sellingPrice: 3200,
-      supplier: "MuscleTech",
-    },
-    {
-      id: 4,
-      image: whey_dummy,
-      productName: "BSN N.O.-XPLODE Pre-Workout",
-      category: "Pre-Workout",
-      stockQuantity: 8,
-      costPrice: 3200,
-      sellingPrice: 5500,
-      supplier: "BSN",
-    },
-    {
-      id: 5,
-      image: whey_dummy,
-      productName: "Universal Animal Pak Multivitamin",
-      category: "Multivitamin",
-      stockQuantity: 35,
-      costPrice: 2800,
-      sellingPrice: 4800,
-      supplier: "Universal Nutrition",
-    }
-  ];
-
-  // Sample customers data
-  const sampleCustomers = [
-    { id: 1, name: "Alex Martinez", phone: "+92 321 2345678", email: "alex@gmail.com" },
-    { id: 2, name: "Sarah Johnson", phone: "+92 300 1234567", email: "sarah@gmail.com" },
-    { id: 3, name: "Mike Chen", phone: "+92 333 9876543", email: "mike@gmail.com" },
-    { id: 4, name: "Emma Davis", phone: "+92 301 4567890", email: "emma@gmail.com" },
-    { id: 5, name: "John Smith", phone: "+92 302 7890123", email: "john@gmail.com" }
-  ];
-
+  // Load products on component mount
   useEffect(() => {
-    setProducts(sampleProducts);
+    loadProducts();
   }, []);
+
+  // Load products from API
+  const loadProducts = async (searchTerm = '') => {
+    setLoading(true);
+    try {
+      const data = await getProductsForPOS(searchTerm);
+      setProducts(data.data || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load products',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search customers
+  const searchCustomers = async (searchTerm) => {
+    if (searchTerm.length < 2) {
+      setCustomers([]);
+      return;
+    }
+    
+    try {
+      const data = await getCustomersForPOS(searchTerm, 1, 10);
+      setCustomers(data.customers || []);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setCustomers([]);
+    }
+  };
 
   // Filter products based on search and filters
   const getFilteredProducts = () => {
     return products.filter(product => {
-      const matchesSearch = product.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            product.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !categoryFilter || product.category === categoryFilter;
       const matchesSupplier = !supplierFilter || product.supplier === supplierFilter;
@@ -152,7 +131,7 @@ const SalesTable = () => {
     const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
-      if (existingItem.quantity < product.stockQuantity) {
+      if (existingItem.quantity < product.stock) {
         setCart(cart.map(item => 
           item.id === product.id 
             ? { ...item, quantity: item.quantity + 1 }
@@ -161,14 +140,27 @@ const SalesTable = () => {
       } else {
         toast({
           title: "Out of Stock",
-          description: `Only ${product.stockQuantity} units available`,
+          description: `Only ${product.stock} units available`,
           status: "warning",
           duration: 3000,
           isClosable: true,
         });
       }
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([...cart, { 
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        productName: product.name,
+        price: parseFloat(product.selling_price),
+        sellingPrice: parseFloat(product.selling_price),
+        quantity: 1,
+        stock: product.stock,
+        stockQuantity: product.stock,
+        category: product.category,
+        supplier: product.supplier,
+        image: product.image_url || whey_dummy
+      }]);
     }
   };
 
@@ -178,7 +170,7 @@ const SalesTable = () => {
       removeFromCart(productId);
     } else {
       const product = products.find(p => p.id === productId);
-      if (newQuantity <= product.stockQuantity) {
+      if (newQuantity <= product.stock) {
         setCart(cart.map(item => 
           item.id === productId 
             ? { ...item, quantity: newQuantity }
@@ -187,7 +179,7 @@ const SalesTable = () => {
       } else {
         toast({
           title: "Insufficient Stock",
-          description: `Only ${product.stockQuantity} units available`,
+          description: `Only ${product.stock} units available`,
           status: "warning",
           duration: 3000,
           isClosable: true,
@@ -204,7 +196,8 @@ const SalesTable = () => {
   // Clear cart
   const clearCart = () => {
     setCart([]);
-    setSelectedCustomer("");
+    setSelectedCustomer(null);
+    setCustomerSearch("");
     setPaymentMethod("");
     setDiscount(0);
   };
@@ -216,7 +209,7 @@ const SalesTable = () => {
   const total = subtotal - discountAmount + tax;
 
   // Handle checkout
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -239,48 +232,81 @@ const SalesTable = () => {
       return;
     }
 
-    // Generate invoice ID
-    const invoiceId = `INV-${Date.now()}`;
-    
-    // Update stock quantities
-    const updatedProducts = products.map(product => {
-      const cartItem = cart.find(item => item.id === product.id);
-      if (cartItem) {
-        return {
-          ...product,
-          stockQuantity: product.stockQuantity - cartItem.quantity
-        };
+    setProcessing(true);
+    try {
+      // Prepare cart items for API
+      const cartItems = cart.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        stock: item.stock
+      }));
+
+      // Process the sale
+      const result = await processPOSSale(
+        cartItems,
+        selectedCustomer?.id || null,
+        paymentMethod.toLowerCase().replace(' ', '_'),
+        discountAmount,
+        tax,
+        `POS sale - ${selectedCustomer ? selectedCustomer.name : 'Guest'}`
+      );
+
+      // Debug: Log the result to see the actual structure
+      console.log('POS Sale Result:', result);
+
+      // Check if result has the expected structure
+      if (!result || !result.invoice_number) {
+        throw new Error('Invalid response structure from server');
       }
-      return product;
-    });
-    setProducts(updatedProducts);
 
-    // Show success message
-    toast({
-      title: "Sale Completed!",
-      description: `Invoice ${invoiceId} generated successfully`,
-      status: "success",
-      duration: 5000,
-      isClosable: true,
-    });
+      // Show success message
+      toast({
+        title: "Sale Completed!",
+        description: `Invoice ${result.invoice_number} generated successfully`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
 
-    // Clear cart and reset form
-    clearCart();
-    
-    // Navigate to invoice detail page
-    history.push(`/admin/invoice-detail?invoiceId=${invoiceId}`);
+      // Clear cart and reset form
+      clearCart();
+      
+      // Reload products to update stock
+      await loadProducts();
+      
+      // Navigate to invoice detail page
+      history.push(`/admin/invoice-detail?invoiceId=${result.id}`);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Checkout Failed",
+        description: error.message || "Failed to process sale",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // Get unique categories and suppliers for filters
   const categories = [...new Set(products.map(p => p.category))];
   const suppliers = [...new Set(products.map(p => p.supplier))];
 
-  // Filter customers based on search
-  const filteredCustomers = sampleCustomers.filter(customer =>
-    customer.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    customer.phone.includes(customerSearch) ||
-    customer.email.toLowerCase().includes(customerSearch.toLowerCase())
-  );
+  // Handle customer search
+  const handleCustomerSearch = (searchTerm) => {
+    setCustomerSearch(searchTerm);
+    if (searchTerm.length >= 2) {
+      searchCustomers(searchTerm);
+      setShowCustomerDropdown(true);
+    } else {
+      setCustomers([]);
+      setShowCustomerDropdown(false);
+    }
+  };
 
   return (
     <Box>
@@ -310,7 +336,10 @@ const SalesTable = () => {
                     <Input
                       placeholder="Search products..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        loadProducts(e.target.value);
+                      }}
                       bg={useColorModeValue("gray.50", "gray.700")}
                       border="none"
                       borderRadius="lg"
@@ -349,21 +378,25 @@ const SalesTable = () => {
             </CardHeader>
             
             <CardBody pt={8} overflow="hidden">
-              {/* Products Grid */}
-              <Grid 
-                templateColumns={{ 
-                  base: "repeat(2, 1fr)", 
-                  sm: "repeat(3, 1fr)",
-                  md: "repeat(4, 1fr)", 
-                  lg: "repeat(3, 1fr)",
-                  xl: "repeat(4, 1fr)"
-                }} 
-                gap={4}
-                maxH={{ lg: "calc(100vh - 400px)" }}
-                overflowY="auto"
-                w="full"
-                p={2}
-              >
+              {loading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" h="300px">
+                  <AppLoader message="Loading products..." />
+                </Box>
+              ) : (
+                <Grid 
+                  templateColumns={{ 
+                    base: "repeat(2, 1fr)", 
+                    sm: "repeat(3, 1fr)",
+                    md: "repeat(4, 1fr)", 
+                    lg: "repeat(3, 1fr)",
+                    xl: "repeat(4, 1fr)"
+                  }} 
+                  gap={4}
+                  maxH={{ lg: "calc(100vh - 400px)" }}
+                  overflowY="auto"
+                  w="full"
+                  p={2}
+                >
                 {getFilteredProducts().map((product) => (
                   <Box
                     key={product.id}
@@ -393,33 +426,36 @@ const SalesTable = () => {
                         bg="gray.100"
                       >
                         <img
-                          src={product.image}
-                          alt={product.productName}
+                          src={product.image_url || whey_dummy}
+                          alt={product.name}
                           style={{
                             width: "100%",
                             height: "100%",
                             objectFit: "cover",
                             display: "block"
                           }}
+                          onError={(e) => {
+                            e.target.src = whey_dummy;
+                          }}
                         />
                       </Box>
                       
                       <VStack spacing={1} align="start">
                         <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="semibold" color={textColor} noOfLines={2}>
-                          {product.productName}
+                          {product.name}
                         </Text>
                         
                         <VStack spacing={1} align="stretch">
                           <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="brand.500">
-                            PKR {product.sellingPrice.toLocaleString()}
+                            PKR {parseFloat(product.selling_price).toLocaleString()}
                           </Text>
                           <Badge
-                            colorScheme={product.stockQuantity < 10 ? "red" : product.stockQuantity < 30 ? "yellow" : "green"}
+                            colorScheme={product.stock < 10 ? "red" : product.stock < 30 ? "yellow" : "green"}
                             variant="subtle"
                             fontSize="xs"
                             w="fit-content"
                           >
-                            {product.stockQuantity} in stock
+                            {product.stock} in stock
                           </Badge>
                         </VStack>
                         
@@ -430,7 +466,8 @@ const SalesTable = () => {
                     </VStack>
                   </Box>
                 ))}
-              </Grid>
+                </Grid>
+              )}
             </CardBody>
           </Card>
         </GridItem>
@@ -533,11 +570,12 @@ const SalesTable = () => {
                       <Input
                         placeholder="Search customer..."
                         value={customerSearch}
-                        onChange={(e) => {
-                          setCustomerSearch(e.target.value);
-                          setShowCustomerDropdown(true);
+                        onChange={(e) => handleCustomerSearch(e.target.value)}
+                        onFocus={() => {
+                          if (customerSearch.length >= 2) {
+                            setShowCustomerDropdown(true);
+                          }
                         }}
-                        onFocus={() => setShowCustomerDropdown(true)}
                         bg={useColorModeValue("gray.50", "gray.700")}
                         border="none"
                         borderRadius="md"
@@ -563,28 +601,28 @@ const SalesTable = () => {
                             variant="ghost"
                             justifyContent="flex-start"
                             onClick={() => {
-                              setSelectedCustomer("Guest");
+                              setSelectedCustomer(null);
                               setCustomerSearch("Guest Sale");
                               setShowCustomerDropdown(false);
                             }}
                           >
                             Guest Sale
                           </Button>
-                          {filteredCustomers.map(customer => (
+                          {customers.map(customer => (
                             <Button
                               key={customer.id}
                               w="full"
                               variant="ghost"
                               justifyContent="flex-start"
                               onClick={() => {
-                                setSelectedCustomer(customer.name);
+                                setSelectedCustomer(customer);
                                 setCustomerSearch(customer.name);
                                 setShowCustomerDropdown(false);
                               }}
                             >
                               <VStack align="start" spacing={0}>
                                 <Text fontSize="sm" fontWeight="semibold">{customer.name}</Text>
-                                <Text fontSize="xs" color={cardLabelColor}>{customer.phone}</Text>
+                                <Text fontSize="xs" color={cardLabelColor}>{customer.mobile_number}</Text>
                               </VStack>
                             </Button>
                           ))}
@@ -674,7 +712,9 @@ const SalesTable = () => {
                   <Button
                     size="lg"
                     onClick={handleCheckout}
-                    isDisabled={cart.length === 0 || !paymentMethod}
+                    isLoading={processing}
+                    loadingText="Processing..."
+                    isDisabled={cart.length === 0 || !paymentMethod || processing}
                     bg="linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)"
                     backgroundImage="linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)"
                     color="white"
@@ -689,7 +729,7 @@ const SalesTable = () => {
                       color: "white"
                     }}
                   >
-                    Checkout - PKR {total.toLocaleString()}
+                    {processing ? "Processing..." : `Checkout - PKR ${total.toLocaleString()}`}
                   </Button>
                 </VStack>
               )}

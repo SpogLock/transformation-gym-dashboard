@@ -25,19 +25,22 @@ import AdminLayout from "layouts/Admin.js";
 import RTLLayout from "layouts/RTL.js";
 import { AuthProvider } from "contexts/AuthContext";
 import { CustomerProvider } from "contexts/CustomerContext";
+import { ProductProvider } from "contexts/ProductContext";
 import ProtectedRoute from "components/ProtectedRoute/ProtectedRoute";
 
 ReactDOM.render(
   <AuthProvider>
     <CustomerProvider>
-      <HashRouter>
-        <Switch>
-          <Route path={`/auth`} component={AuthLayout} />
-          <ProtectedRoute path={`/admin`} component={AdminLayout} />
-          <ProtectedRoute path={`/rtl`} component={RTLLayout} />
-          <Redirect from={`/`} to="/auth/signin" />
-        </Switch>
-      </HashRouter>
+      <ProductProvider>
+        <HashRouter>
+          <Switch>
+            <Route path={`/auth`} component={AuthLayout} />
+            <ProtectedRoute path={`/admin`} component={AdminLayout} />
+            <ProtectedRoute path={`/rtl`} component={RTLLayout} />
+            <Redirect from={`/`} to="/auth/signin" />
+          </Switch>
+        </HashRouter>
+      </ProductProvider>
     </CustomerProvider>
   </AuthProvider>,
   document.getElementById("root")

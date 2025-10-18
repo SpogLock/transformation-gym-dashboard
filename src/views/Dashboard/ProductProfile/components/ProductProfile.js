@@ -48,7 +48,10 @@ import CardHeader from "components/Card/CardHeader.js";
 import { EditIcon, DeleteIcon, ArrowBackIcon } from "@chakra-ui/icons";
 import React, { useState, useEffect } from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { useProducts } from "contexts/ProductContext";
 import whey_dummy from "assets/img/whey_dummy.png";
+import EditProductModal from "components/Modals/EditProductModal";
+import AppLoader from "components/Loaders/AppLoader";
 
 const ProductProfile = () => {
   const textColor = useColorModeValue("gray.700", "white");
@@ -62,10 +65,12 @@ const ProductProfile = () => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useAlertDisclosure();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  
+  const { getProductById, restock, removeProduct } = useProducts();
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [restockQuantity, setRestockQuantity] = useState(0);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedProduct, setEditedProduct] = useState({});
 
   // Sample product data (in real app, this would come from API/state)
   const sampleProducts = [
@@ -233,76 +238,89 @@ const ProductProfile = () => {
     const productId = urlParams.get('productId');
     
     if (productId) {
-      const foundProduct = sampleProducts.find(p => p.id === parseInt(productId));
-      if (foundProduct) {
-        setProduct(foundProduct);
-        setEditedProduct(foundProduct);
-      } else {
-        // Product not found, redirect to inventory
-        history.push('/admin/inventory-management');
-      }
+      loadProduct(productId);
     } else {
       // No product ID, redirect to inventory
       history.push('/admin/inventory-management');
     }
   }, [location.search, history]);
 
+  const loadProduct = async (productId) => {
+    setLoading(true);
+    try {
+      const productData = await getProductById(parseInt(productId));
+      setProduct(productData);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load product',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      // Product not found, redirect to inventory
+      history.push('/admin/inventory-management');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBack = () => {
     history.push('/admin/inventory-management');
   };
 
   const handleEdit = () => {
-    setIsEditing(true);
-    setEditedProduct({ ...product });
+    onEditOpen();
   };
 
-  const handleSave = () => {
-    setProduct(editedProduct);
-    setIsEditing(false);
-    toast({
-      title: "Product Updated",
-      description: "Product information has been updated successfully.",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-  };
-
-  const handleCancel = () => {
-    setEditedProduct({ ...product });
-    setIsEditing(false);
-  };
-
-  const handleRestock = () => {
+  const handleRestock = async () => {
     if (restockQuantity > 0) {
-      const updatedProduct = {
-        ...product,
-        stockQuantity: product.stockQuantity + restockQuantity,
-        lastUpdated: new Date().toISOString().split('T')[0]
-      };
-      setProduct(updatedProduct);
-      setRestockQuantity(0);
-      onClose();
+      try {
+        const updatedProduct = await restock(product.id, restockQuantity);
+        setProduct(updatedProduct);
+        setRestockQuantity(0);
+        onClose();
+        toast({
+          title: "Stock Updated",
+          description: `Added ${restockQuantity} units to ${product.name}`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to restock product',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await removeProduct(product.id);
       toast({
-        title: "Stock Updated",
-        description: `Added ${restockQuantity} units to ${product.productName}`,
+        title: "Product Deleted",
+        description: `${product.name} has been deleted from inventory.`,
         status: "success",
         duration: 3000,
         isClosable: true,
       });
+      onDeleteClose();
+      history.push('/admin/inventory-management');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete product',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      onDeleteClose();
     }
-  };
-
-  const handleDelete = () => {
-    toast({
-      title: "Product Deleted",
-      description: `${product.productName} has been deleted from inventory.`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-    onDeleteClose();
-    history.push('/admin/inventory-management');
   };
 
   const getStockStatus = (quantity) => {
@@ -315,15 +333,11 @@ const ProductProfile = () => {
     }
   };
 
-  if (!product) {
-    return (
-      <Flex justify="center" align="center" h="400px">
-        <Text>Loading product...</Text>
-      </Flex>
-    );
+  if (loading || !product) {
+    return <AppLoader message="Loading product..." fullHeight />;
   }
 
-  const stockStatus = getStockStatus(product.stockQuantity);
+  const stockStatus = getStockStatus(product.stock);
 
   return (
     <Box w="full" px={{ base: 4, md: 6 }}>
@@ -357,7 +371,7 @@ const ProductProfile = () => {
           />
           <VStack align="start" spacing={1}>
             <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="bold" color={textColor}>
-              {product.productName}
+              {product.name}
             </Text>
             <HStack spacing={4}>
               <Badge colorScheme="blue" variant="subtle" px={3} py={1} borderRadius="full">
@@ -376,7 +390,6 @@ const ProductProfile = () => {
             bg="brand.500"
             color="white"
             onClick={handleEdit}
-            isDisabled={isEditing}
             size={{ base: "xs", md: "sm", lg: "md" }}
             borderRadius="lg"
             _hover={{ 
@@ -448,11 +461,15 @@ const ProductProfile = () => {
             <CardBody p={0} display="flex" flexDirection="column" h="full">
               <Box position="relative" flex="1" display="flex" alignItems="center" justifyContent="center" h="120px">
                 <Image
-                  src={product.image}
-                  alt={product.productName}
+                  src={product.image_url || '/api/placeholder/120/120'}
+                  alt={product.name}
                   w="100%"
                   h="100%"
                   objectFit="cover"
+                  fallbackSrc="/api/placeholder/120/120"
+                  onError={(e) => {
+                    e.target.src = "/api/placeholder/120/120";
+                  }}
                 />
                 <Box
                   position="absolute"
@@ -566,7 +583,7 @@ const ProductProfile = () => {
                   >
                     <Text fontSize={{ base: "xs", md: "sm" }} color={cardLabelColor} mb={{ base: 1, md: 3 }} textTransform="uppercase" letterSpacing="wide" fontWeight="medium">Cost Price</Text>
                     <Text fontSize={{ base: "lg", md: "3xl" }} fontWeight="bold" color="red.500">
-                      PKR {product.costPrice.toLocaleString()}
+                      PKR {parseFloat(product.cost_price || 0).toLocaleString()}
                     </Text>
                   </Box>
                   <Box 
@@ -582,7 +599,7 @@ const ProductProfile = () => {
                   >
                     <Text fontSize={{ base: "xs", md: "sm" }} color={cardLabelColor} mb={{ base: 1, md: 3 }} textTransform="uppercase" letterSpacing="wide" fontWeight="medium">Selling Price</Text>
                     <Text fontSize={{ base: "lg", md: "3xl" }} fontWeight="bold" color="green.500">
-                      PKR {product.sellingPrice.toLocaleString()}
+                      PKR {parseFloat(product.selling_price || 0).toLocaleString()}
                     </Text>
                   </Box>
                 </Grid>
@@ -603,10 +620,10 @@ const ProductProfile = () => {
                   <Text fontSize={{ base: "xs", md: "sm" }} color={cardLabelColor} mb={{ base: 1, md: 3 }} textTransform="uppercase" letterSpacing="wide" fontWeight="medium">Profit</Text>
                   <VStack spacing={{ base: 1, md: 2 }}>
                     <Text fontSize={{ base: "lg", md: "3xl" }} fontWeight="bold" color="blue.500">
-                      PKR {(product.sellingPrice - product.costPrice).toLocaleString()}
+                      PKR {(parseFloat(product.selling_price || 0) - parseFloat(product.cost_price || 0)).toLocaleString()}
                     </Text>
                     <Badge colorScheme="blue" variant="solid" px={{ base: 2, md: 3 }} py={{ base: 0.5, md: 1 }} borderRadius="md" fontSize={{ base: "xs", md: "sm" }}>
-                      {Math.round(((product.sellingPrice - product.costPrice) / product.costPrice) * 100)}%
+                      {Math.round(((parseFloat(product.selling_price || 0) - parseFloat(product.cost_price || 0)) / parseFloat(product.cost_price || 1)) * 100)}%
                     </Badge>
                   </VStack>
                 </Box>
@@ -645,7 +662,7 @@ const ProductProfile = () => {
                       }} 
                       gap={{ base: 2, md: 1 }}
                     >
-                      {Object.entries(product.specifications).map(([key, value]) => (
+                      {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
                         <Box 
                           key={key} 
                           p={{ base: 3, md: 2 }} 
@@ -703,7 +720,7 @@ const ProductProfile = () => {
                         transition="all 0.2s ease"
                       >
                         <Text fontSize={{ base: "xs", md: "xs" }} color={cardLabelColor} mb={{ base: 1, md: 0 }} fontWeight="medium">Company</Text>
-                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "xs" }} color="blue.600">{product.supplierInfo.name}</Text>
+                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "xs" }} color="blue.600">{product.supplier || 'N/A'}</Text>
                       </Box>
                       
                       <Box 
@@ -722,7 +739,7 @@ const ProductProfile = () => {
                         transition="all 0.2s ease"
                       >
                         <Text fontSize={{ base: "xs", md: "xs" }} fontWeight="medium" mb={{ base: 1, md: 0 }} color={cardLabelColor}>Contact:</Text>
-                        <Text fontSize={{ base: "sm", md: "xs" }} fontWeight="bold" color={textColor}>{product.supplierInfo.contact}</Text>
+                        <Text fontSize={{ base: "sm", md: "xs" }} fontWeight="bold" color={textColor}>{product.supplier_contact || 'N/A'}</Text>
                       </Box>
                       
                       <Box 
@@ -741,7 +758,7 @@ const ProductProfile = () => {
                         transition="all 0.2s ease"
                       >
                         <Text fontSize={{ base: "xs", md: "xs" }} fontWeight="medium" mb={{ base: 1, md: 0 }} color={cardLabelColor}>Email:</Text>
-                        <Text fontSize={{ base: "sm", md: "xs" }} fontWeight="bold" color={textColor} wordBreak="break-all">{product.supplierInfo.email}</Text>
+                        <Text fontSize={{ base: "sm", md: "xs" }} fontWeight="bold" color={textColor} wordBreak="break-all">{product.supplier_email || 'N/A'}</Text>
                       </Box>
                       
                       <Box 
@@ -760,7 +777,7 @@ const ProductProfile = () => {
                       >
                         <Text fontWeight="medium" mb={{ base: 1, md: 0 }} fontSize={{ base: "xs", md: "xs" }} color={cardLabelColor}>Address</Text>
                         <Text fontSize={{ base: "sm", md: "xs" }} color={textColor} lineHeight="1.4">
-                          {product.supplierInfo.address}
+                          {product.supplier_address || 'N/A'}
                         </Text>
                       </Box>
                     </VStack>
@@ -774,14 +791,16 @@ const ProductProfile = () => {
               <CardHeader pb={3}>
                 <HStack justify="space-between" align="center">
                   <Text fontSize="md" fontWeight="bold">Recent Sales</Text>
-                  <Badge colorScheme="green" variant="subtle" px={2} py={1} borderRadius="full" fontSize="xs">
-                    {product.recentSales.length} transactions
-                  </Badge>
+                  {product.recentSales && product.recentSales.length > 0 && (
+                    <Badge colorScheme="green" variant="subtle" px={2} py={1} borderRadius="full" fontSize="xs">
+                      {product.recentSales.length} transactions
+                    </Badge>
+                  )}
                 </HStack>
               </CardHeader>
               <CardBody pt={0} display="flex" flexDirection="column" h="full">
                 <VStack spacing={2} align="stretch" flex="1">
-                  {product.recentSales.map((sale, index) => (
+                  {product.recentSales && product.recentSales.length > 0 ? product.recentSales.map((sale, index) => (
                     <Box 
                       key={index} 
                       p={3} 
@@ -812,7 +831,13 @@ const ProductProfile = () => {
                         </HStack>
                       </HStack>
                     </Box>
-                  ))}
+                  )) : (
+                    <Box textAlign="center" py={8}>
+                      <Text color={cardLabelColor} fontSize="sm">
+                        No recent sales data available
+                      </Text>
+                    </Box>
+                  )}
                 </VStack>
               </CardBody>
             </Card>
@@ -828,7 +853,7 @@ const ProductProfile = () => {
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4}>
-              <Text>How many units would you like to add to {product.productName}?</Text>
+              <Text>How many units would you like to add to {product.name}?</Text>
               <NumberInput
                 value={restockQuantity}
                 onChange={(value) => setRestockQuantity(parseInt(value) || 0)}
@@ -893,7 +918,7 @@ const ProductProfile = () => {
               Delete Product
             </AlertDialogHeader>
             <AlertDialogBody>
-              Are you sure you want to delete "{product.productName}"? This action cannot be undone.
+              Are you sure you want to delete "{product.name}"? This action cannot be undone.
             </AlertDialogBody>
             <AlertDialogFooter>
               <Button 
@@ -933,6 +958,19 @@ const ProductProfile = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {/* Edit Product Modal */}
+      <EditProductModal 
+        isOpen={isEditOpen} 
+        onClose={() => {
+          onEditClose();
+          // Reload product after edit
+          const urlParams = new URLSearchParams(location.search);
+          const productId = urlParams.get('productId');
+          if (productId) loadProduct(productId);
+        }} 
+        product={product} 
+      />
     </Box>
   );
 };

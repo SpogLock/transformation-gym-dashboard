@@ -2647,6 +2647,2994 @@ const FeeHistoryTable = ({ customerId }) => {
 
 ---
 
+## Product/Inventory Management Endpoints
+
+All Product endpoints require authentication and the `staff_or_admin` middleware.
+
+### 32. Get All Products
+**GET** `/products`
+
+Retrieves a paginated list of products with filtering and sorting options.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `category` (optional): Filter by category
+- `supplier` (optional): Filter by supplier name (partial match)
+- `stock_status` (optional): Filter by stock status (`low`, `out`, `in_stock`)
+- `is_active` (optional): Filter by active status (`true`, `false`)
+- `search` (optional): Search by name, brand, or supplier
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 1,
+        "name": "Whey Protein Isolate",
+        "description": "Premium quality whey protein",
+        "category": "Supplements",
+        "brand": "Optimum Nutrition",
+        "flavor": "Chocolate",
+        "size": "2kg",
+        "protein_per_serving": "25g",
+        "servings": "60",
+        "type": "Protein Powder",
+        "image_url": "https://example.com/product.jpg",
+        "stock": 45,
+        "cost_price": "3500.00",
+        "selling_price": "4500.00",
+        "supplier": "Health Supplements Ltd",
+        "supplier_contact": "+92 321 1234567",
+        "supplier_email": "supplier@example.com",
+        "supplier_address": "Karachi, Pakistan",
+        "is_active": true,
+        "profit": "1000.00",
+        "profit_percentage": "28.57",
+        "stock_status": "high",
+        "stock_status_display": "High",
+        "created_at": "2025-10-17T10:30:00.000000Z",
+        "updated_at": "2025-10-17T10:30:00.000000Z"
+      }
+    ],
+    "first_page_url": "http://127.0.0.1:8000/api/products?page=1",
+    "from": 1,
+    "last_page": 1,
+    "last_page_url": "http://127.0.0.1:8000/api/products?page=1",
+    "links": [],
+    "next_page_url": null,
+    "path": "http://127.0.0.1:8000/api/products",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getProducts = async (filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage examples:
+// getProducts({ category: 'Supplements', stock_status: 'low' })
+// getProducts({ search: 'protein', sort_by: 'name', sort_order: 'asc' })
+// getProducts({ supplier: 'Health Supplements', per_page: 20 })
+```
+
+---
+
+### 33. Create Product
+**POST** `/products`
+
+Creates a new product in the inventory.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "name": "Whey Protein Isolate",
+  "description": "Premium quality whey protein",
+  "category": "Supplements",
+  "brand": "Optimum Nutrition",
+  "flavor": "Chocolate",
+  "size": "2kg",
+  "protein_per_serving": "25g",
+  "servings": "60",
+  "type": "Protein Powder",
+  "image_url": "https://example.com/product.jpg",
+  "stock": 50,
+  "cost_price": 3500.00,
+  "selling_price": 4500.00,
+  "supplier": "Health Supplements Ltd",
+  "supplier_contact": "+92 321 1234567",
+  "supplier_email": "supplier@example.com",
+  "supplier_address": "Karachi, Pakistan",
+  "is_active": true
+}
+```
+
+#### Field Requirements
+- `name` - Required, max 255 characters
+- `description` - Optional
+- `category` - Required, max 255 characters
+- `brand` - Optional, max 255 characters
+- `flavor` - Optional, max 255 characters
+- `size` - Optional, max 255 characters
+- `protein_per_serving` - Optional, max 255 characters
+- `servings` - Optional, max 255 characters
+- `type` - Optional, max 255 characters
+- `image_url` - Optional, must be valid URL
+- `stock` - Required, integer, minimum 0
+- `cost_price` - Required, numeric, minimum 0
+- `selling_price` - Required, numeric, minimum 0
+- `supplier` - Required, max 255 characters
+- `supplier_contact` - Optional, max 255 characters
+- `supplier_email` - Optional, valid email, max 255 characters
+- `supplier_address` - Optional
+- `is_active` - Optional, boolean (defaults to true)
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "Product created successfully",
+  "data": {
+    "id": 1,
+    "name": "Whey Protein Isolate",
+    "description": "Premium quality whey protein",
+    "category": "Supplements",
+    "brand": "Optimum Nutrition",
+    "stock": 50,
+    "cost_price": "3500.00",
+    "selling_price": "4500.00",
+    "profit": "1000.00",
+    "profit_percentage": "28.57",
+    "stock_status": "high",
+    "stock_status_display": "High",
+    "is_active": true,
+    "created_at": "2025-10-17T10:30:00.000000Z",
+    "updated_at": "2025-10-17T10:30:00.000000Z"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const createProduct = async (productData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/products', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(productData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 34. Get Product Details
+**GET** `/products/{id}`
+
+Retrieves detailed information about a specific product, including recent transactions.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Whey Protein Isolate",
+    "description": "Premium quality whey protein",
+    "category": "Supplements",
+    "brand": "Optimum Nutrition",
+    "flavor": "Chocolate",
+    "size": "2kg",
+    "stock": 45,
+    "cost_price": "3500.00",
+    "selling_price": "4500.00",
+    "profit": "1000.00",
+    "profit_percentage": "28.57",
+    "stock_status": "high",
+    "stock_status_display": "High",
+    "supplier": "Health Supplements Ltd",
+    "supplier_contact": "+92 321 1234567",
+    "supplier_email": "supplier@example.com",
+    "is_active": true,
+    "transactions": [
+      {
+        "id": 1,
+        "transaction_type": "sale",
+        "quantity": 2,
+        "unit_price": "4500.00",
+        "total_amount": "9000.00",
+        "customer": {
+          "id": 1,
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "created_at": "2025-10-17T10:30:00.000000Z"
+      }
+    ],
+    "created_at": "2025-10-17T10:30:00.000000Z",
+    "updated_at": "2025-10-17T10:30:00.000000Z"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getProduct = async (productId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 35. Update Product
+**PUT** `/products/{id}`
+
+Updates an existing product's information. Partial updates are supported.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body (all fields optional)
+```json
+{
+  "name": "Whey Protein Isolate Pro",
+  "stock": 60,
+  "cost_price": 3200.00,
+  "selling_price": 4200.00,
+  "is_active": true
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Product updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Whey Protein Isolate Pro",
+    "stock": 60,
+    "cost_price": "3200.00",
+    "selling_price": "4200.00",
+    "profit": "1000.00",
+    "profit_percentage": "31.25",
+    "stock_status": "high",
+    "is_active": true,
+    "updated_at": "2025-10-17T11:00:00.000000Z"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const updateProduct = async (productId, updateData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(updateData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 36. Delete Product
+**DELETE** `/products/{id}`
+
+Deletes a product from the inventory.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Product deleted successfully"
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const deleteProduct = async (productId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.message;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 37. Restock Product
+**POST** `/products/{id}/restock`
+
+Adds stock quantity to an existing product.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "quantity": 20
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Product restocked successfully",
+  "data": {
+    "id": 1,
+    "name": "Whey Protein Isolate",
+    "stock": 65,
+    "stock_status": "high",
+    "stock_status_display": "High",
+    "updated_at": "2025-10-17T11:30:00.000000Z"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const restockProduct = async (productId, quantity) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}/restock`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ quantity })
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 38. Get Product Statistics
+**GET** `/products/statistics`
+
+Retrieves comprehensive statistics about the inventory.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "total_products": 150,
+      "active_products": 135,
+      "low_stock_products": 12,
+      "out_of_stock_products": 3,
+      "total_inventory_value": "525000.00",
+      "total_sales_value": "675000.00"
+    }
+  }
+}
+```
+
+#### Statistics Breakdown
+- `total_products` - Total number of products in inventory
+- `active_products` - Number of active products (is_active = true)
+- `low_stock_products` - Products with stock ≤ 5 units
+- `out_of_stock_products` - Products with stock ≤ 0 units
+- `total_inventory_value` - Sum of (stock × cost_price) for all products
+- `total_sales_value` - Sum of (stock × selling_price) for all products
+
+#### Frontend Integration Example
+```javascript
+const getProductStatistics = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/products/statistics', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.statistics;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Product Stock Status Indicators
+
+The system automatically calculates stock status based on available quantity:
+
+### Stock Status Levels
+- **Low Stock** (🔴 Red): stock ≤ 5 units
+- **Medium Stock** (🟡 Yellow): 6 ≤ stock ≤ 20 units
+- **High Stock** (🟢 Green): stock > 20 units
+- **Out of Stock** (⚫ Black): stock ≤ 0 units
+
+### Automatic Stock Management
+
+Stock is automatically updated when:
+1. **Products are sold** - Stock decreases by quantity sold
+2. **Products are restocked** - Stock increases by quantity added
+3. **Invoices are created** - Each transaction in the invoice reduces stock
+4. **Transactions are created** - Sale transactions reduce stock, restock transactions increase it
+
+### Stock Validation
+
+The system prevents overselling by:
+- Validating stock availability before creating sales transactions
+- Returning error if requested quantity exceeds available stock
+- Providing current available stock in error messages
+
+---
+
+## Inventory Management Frontend Integration Tips
+
+### 1. Product List Component with Stock Indicators
+```javascript
+const ProductList = () => {
+  const [products, setProducts] = useState([]);
+  const [filters, setFilters] = useState({});
+  const [stats, setStats] = useState(null);
+
+  const loadProducts = async () => {
+    try {
+      const data = await getProducts(filters);
+      setProducts(data.data);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
+
+  const loadStatistics = async () => {
+    try {
+      const statistics = await getProductStatistics();
+      setStats(statistics);
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+    loadStatistics();
+  }, [filters]);
+
+  const getStockBadgeColor = (status) => {
+    switch(status) {
+      case 'low': return 'bg-red-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'high': return 'bg-green-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  return (
+    <div>
+      {/* Statistics Dashboard */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="stat-card">
+            <h3>Total Products</h3>
+            <p className="text-3xl">{stats.total_products}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Low Stock Alert</h3>
+            <p className="text-3xl text-red-500">{stats.low_stock_products}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Out of Stock</h3>
+            <p className="text-3xl text-gray-700">{stats.out_of_stock_products}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Inventory Value</h3>
+            <p className="text-3xl">${stats.total_inventory_value}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <div className="filters mb-4">
+        <select 
+          value={filters.stock_status || ''} 
+          onChange={(e) => setFilters({...filters, stock_status: e.target.value})}
+        >
+          <option value="">All Stock Levels</option>
+          <option value="low">Low Stock</option>
+          <option value="out">Out of Stock</option>
+          <option value="in_stock">In Stock</option>
+        </select>
+
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={filters.search || ''}
+          onChange={(e) => setFilters({...filters, search: e.target.value})}
+        />
+      </div>
+
+      {/* Product Grid */}
+      <div className="product-grid">
+        {products.map(product => (
+          <div key={product.id} className="product-card">
+            <div className={`stock-badge ${getStockBadgeColor(product.stock_status)}`}>
+              {product.stock_status_display}
+            </div>
+            
+            <h3>{product.name}</h3>
+            <p>{product.brand} - {product.category}</p>
+            
+            <div className="stock-info">
+              <span>Stock: {product.stock} units</span>
+              {product.stock <= 5 && (
+                <span className="text-red-500">⚠️ Low Stock!</span>
+              )}
+            </div>
+            
+            <div className="price-info">
+              <span>Cost: ${product.cost_price}</span>
+              <span>Sell: ${product.selling_price}</span>
+              <span className="profit">Profit: ${product.profit} ({product.profit_percentage}%)</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Product Form Component
+```javascript
+const ProductForm = ({ productId = null, onSaved }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    brand: '',
+    stock: 0,
+    cost_price: 0,
+    selling_price: 0,
+    supplier: '',
+    supplier_contact: '',
+    supplier_email: '',
+    is_active: true
+  });
+
+  const loadProduct = async () => {
+    if (productId) {
+      try {
+        const product = await getProduct(productId);
+        setFormData(product);
+      } catch (error) {
+        console.error('Error loading product:', error);
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      let result;
+      if (productId) {
+        result = await updateProduct(productId, formData);
+      } else {
+        result = await createProduct(formData);
+      }
+      onSaved(result);
+    } catch (error) {
+      console.error('Error saving product:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadProduct();
+  }, [productId]);
+
+  const calculateProfit = () => {
+    const profit = formData.selling_price - formData.cost_price;
+    const percentage = formData.cost_price > 0 
+      ? ((profit / formData.cost_price) * 100).toFixed(2)
+      : 0;
+    return { profit, percentage };
+  };
+
+  const { profit, percentage } = calculateProfit();
+
+  return (
+    <form onSubmit={handleSubmit} className="product-form">
+      <input
+        type="text"
+        placeholder="Product Name"
+        value={formData.name}
+        onChange={(e) => setFormData({...formData, name: e.target.value})}
+        required
+      />
+
+      <input
+        type="text"
+        placeholder="Category"
+        value={formData.category}
+        onChange={(e) => setFormData({...formData, category: e.target.value})}
+        required
+      />
+
+      <input
+        type="text"
+        placeholder="Brand"
+        value={formData.brand}
+        onChange={(e) => setFormData({...formData, brand: e.target.value})}
+      />
+
+      <input
+        type="number"
+        placeholder="Stock Quantity"
+        value={formData.stock}
+        onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value)})}
+        required
+        min="0"
+      />
+
+      <input
+        type="number"
+        placeholder="Cost Price"
+        value={formData.cost_price}
+        onChange={(e) => setFormData({...formData, cost_price: parseFloat(e.target.value)})}
+        required
+        min="0"
+        step="0.01"
+      />
+
+      <input
+        type="number"
+        placeholder="Selling Price"
+        value={formData.selling_price}
+        onChange={(e) => setFormData({...formData, selling_price: parseFloat(e.target.value)})}
+        required
+        min="0"
+        step="0.01"
+      />
+
+      {/* Profit Display */}
+      <div className="profit-info">
+        <span>Profit: ${profit.toFixed(2)}</span>
+        <span>Margin: {percentage}%</span>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Supplier Name"
+        value={formData.supplier}
+        onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+        required
+      />
+
+      <input
+        type="text"
+        placeholder="Supplier Contact"
+        value={formData.supplier_contact}
+        onChange={(e) => setFormData({...formData, supplier_contact: e.target.value})}
+      />
+
+      <input
+        type="email"
+        placeholder="Supplier Email"
+        value={formData.supplier_email}
+        onChange={(e) => setFormData({...formData, supplier_email: e.target.value})}
+      />
+
+      <label>
+        <input
+          type="checkbox"
+          checked={formData.is_active}
+          onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+        />
+        Active Product
+      </label>
+
+      <button type="submit">
+        {productId ? 'Update Product' : 'Create Product'}
+      </button>
+    </form>
+  );
+};
+```
+
+### 3. Restock Component
+```javascript
+const RestockModal = ({ product, onRestocked }) => {
+  const [quantity, setQuantity] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const handleRestock = async () => {
+    setLoading(true);
+    try {
+      const result = await restockProduct(product.id, quantity);
+      onRestocked(result);
+      setQuantity(0);
+    } catch (error) {
+      console.error('Error restocking:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="restock-modal">
+      <h3>Restock: {product.name}</h3>
+      <p>Current Stock: {product.stock} units</p>
+      
+      <input
+        type="number"
+        placeholder="Quantity to add"
+        value={quantity}
+        onChange={(e) => setQuantity(parseInt(e.target.value))}
+        min="1"
+      />
+      
+      <p>New Stock: {product.stock + quantity} units</p>
+      
+      <button onClick={handleRestock} disabled={loading || quantity <= 0}>
+        {loading ? 'Restocking...' : 'Add Stock'}
+      </button>
+    </div>
+  );
+};
+```
+
+### 4. Low Stock Alert Component
+```javascript
+const LowStockAlert = () => {
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+
+  const loadLowStockProducts = async () => {
+    try {
+      const data = await getProducts({ stock_status: 'low' });
+      setLowStockProducts(data.data);
+    } catch (error) {
+      console.error('Error loading low stock products:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadLowStockProducts();
+    // Refresh every 5 minutes
+    const interval = setInterval(loadLowStockProducts, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (lowStockProducts.length === 0) return null;
+
+  return (
+    <div className="low-stock-alert bg-red-100 border-red-500 p-4 mb-4">
+      <h3 className="text-red-700">⚠️ Low Stock Alert!</h3>
+      <p>{lowStockProducts.length} product(s) are running low on stock:</p>
+      <ul>
+        {lowStockProducts.map(product => (
+          <li key={product.id}>
+            <strong>{product.name}</strong> - Only {product.stock} units left
+            <button onClick={() => openRestockModal(product)}>
+              Restock Now
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+```
+
+### 5. Product Sales Integration
+```javascript
+// When creating a sale, check stock availability
+const createSale = async (productId, quantity) => {
+  try {
+    // First, get product to check stock
+    const product = await getProduct(productId);
+    
+    if (product.stock < quantity) {
+      alert(`Insufficient stock! Only ${product.stock} units available.`);
+      return false;
+    }
+    
+    // Proceed with sale (via TransactionController or InvoiceController)
+    // Stock will be automatically reduced
+    // ...
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating sale:', error);
+    return false;
+  }
+};
+```
+
+---
+
+## Point of Sale (POS) System Endpoints
+
+The POS system allows cashiers to sell products to customers, create invoices, and process payments. It integrates with the inventory system for stock management and customer system for transaction history.
+
+### 39. Create POS Sale (Multi-Product Invoice)
+**POST** `/invoices`
+
+Creates a complete POS sale with multiple products, generates an invoice, and processes payment.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "customer_id": 1,
+  "transactions": [
+    {
+      "product_id": 1,
+      "quantity": 2,
+      "unit_price": 5500.00
+    },
+    {
+      "product_id": 3,
+      "quantity": 1,
+      "unit_price": 3200.00
+    }
+  ],
+  "tax_amount": 1230.00,
+  "discount_amount": 500.00,
+  "payment_method": "cash",
+  "notes": "POS sale - Customer purchase"
+}
+```
+
+#### Field Requirements
+- `customer_id` - Optional (null for guest sales)
+- `transactions` - Required array of products being sold
+  - `product_id` - Required, must exist in products table
+  - `quantity` - Required, minimum 1
+  - `unit_price` - Required, numeric, minimum 0
+- `tax_amount` - Optional, numeric, minimum 0 (default: 0)
+- `discount_amount` - Optional, numeric, minimum 0 (default: 0)
+- `payment_method` - Optional (`cash`, `card`, `bank_transfer`, `digital_wallet` - default: `cash`)
+- `notes` - Optional, string
+- `due_date` - Optional, date (for credit sales)
+
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "message": "Invoice created successfully",
+  "data": {
+    "invoice": {
+      "id": 15,
+      "invoice_number": "INV-20251017-0015",
+      "customer_id": 1,
+      "subtotal": "14200.00",
+      "tax_amount": "1230.00",
+      "discount_amount": "500.00",
+      "total_amount": "14930.00",
+      "payment_status": "paid",
+      "payment_method": "cash",
+      "notes": "POS sale - Customer purchase",
+      "due_date": null,
+      "created_at": "2025-10-17T18:30:00.000000Z",
+      "updated_at": "2025-10-17T18:30:00.000000Z"
+    },
+    "transactions": [
+      {
+        "id": 25,
+        "customer_id": 1,
+        "product_id": 1,
+        "invoice_id": 15,
+        "quantity": 2,
+        "unit_price": "5500.00",
+        "total_amount": "11000.00",
+        "transaction_type": "sale",
+        "payment_method": "cash",
+        "product": {
+          "id": 1,
+          "name": "BSN N.O.-XPLODE Pre-Workout",
+          "stock": 6
+        }
+      },
+      {
+        "id": 26,
+        "customer_id": 1,
+        "product_id": 3,
+        "invoice_id": 15,
+        "quantity": 1,
+        "unit_price": "3200.00",
+        "total_amount": "3200.00",
+        "transaction_type": "sale",
+        "payment_method": "cash",
+        "product": {
+          "id": 3,
+          "name": "MuscleTech Creatine Monohydrate",
+          "stock": 44
+        }
+      }
+    ],
+    "customer": {
+      "id": 1,
+      "name": "Alex Martinez",
+      "total_spent": "25430.00",
+      "total_orders": 8,
+      "total_items_purchased": 12
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const processPOSSale = async (cartItems, customerId, paymentMethod, discount = 0, tax = 0) => {
+  const token = localStorage.getItem('auth_token');
+  
+  // Prepare transactions array
+  const transactions = cartItems.map(item => ({
+    product_id: item.productId,
+    quantity: item.quantity,
+    unit_price: item.price
+  }));
+  
+  const requestData = {
+    customer_id: customerId, // null for guest sales
+    transactions: transactions,
+    tax_amount: tax,
+    discount_amount: discount,
+    payment_method: paymentMethod,
+    notes: `POS sale - ${customerId ? 'Customer purchase' : 'Guest sale'}`
+  };
+  
+  const response = await fetch('http://127.0.0.1:8000/api/invoices', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(requestData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 40. Get Customer List for POS
+**GET** `/customers`
+
+Retrieves customers for POS customer selection (same endpoint as customer management, but used differently in POS context).
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters for POS
+- `search` (optional): Search by name, email, or mobile number
+- `per_page` (optional): Items per page (default: `15`)
+- `sort_by` (optional): Sort field (default: `name`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `asc`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customers": [
+      {
+        "id": 1,
+        "name": "Alex Martinez",
+        "email": "alex@example.com",
+        "mobile_number": "+92 321 2345678",
+        "total_spent": "15000.00",
+        "total_orders": 5,
+        "last_purchase_date": "2025-10-15"
+      },
+      {
+        "id": 2,
+        "name": "Sarah Johnson",
+        "email": "sarah@example.com",
+        "mobile_number": "+92 300 1234567",
+        "total_spent": "8500.00",
+        "total_orders": 3,
+        "last_purchase_date": "2025-10-12"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 1,
+      "per_page": 15,
+      "total": 2,
+      "from": 1,
+      "to": 2
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const searchCustomers = async (searchTerm) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/customers?search=${searchTerm}&per_page=10`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.customers;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 41. Get Product List for POS
+**GET** `/products`
+
+Retrieves products for POS product selection (same endpoint as inventory management).
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters for POS
+- `is_active` (optional): Filter by active status (`true` - default for POS)
+- `stock_status` (optional): Filter by stock status (`in_stock` - default for POS)
+- `search` (optional): Search by name, brand, or category
+- `per_page` (optional): Items per page (default: `50` for POS)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 1,
+        "name": "BSN N.O.-XPLODE Pre-Workout",
+        "category": "Pre-Workout",
+        "brand": "BSN",
+        "stock": 8,
+        "selling_price": "5500.00",
+        "stock_status": "low",
+        "stock_status_display": "Low",
+        "image_url": "https://example.com/product.jpg"
+      },
+      {
+        "id": 3,
+        "name": "MuscleTech Creatine Monohydrate",
+        "category": "Creatine",
+        "brand": "MuscleTech",
+        "stock": 45,
+        "selling_price": "3200.00",
+        "stock_status": "high",
+        "stock_status_display": "High",
+        "image_url": "https://example.com/product.jpg"
+      }
+    ]
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getProductsForPOS = async (searchTerm = '') => {
+  const token = localStorage.getItem('auth_token');
+  
+  const queryParams = new URLSearchParams({
+    is_active: 'true',
+    stock_status: 'in_stock',
+    search: searchTerm,
+    per_page: '50'
+  });
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/products?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 42. Get Invoice Details
+**GET** `/invoices/{id}`
+
+Retrieves detailed information about a specific invoice created from POS.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "invoice": {
+      "id": 15,
+      "invoice_number": "INV-20251017-0015",
+      "customer_id": 1,
+      "subtotal": "14200.00",
+      "tax_amount": "1230.00",
+      "discount_amount": "500.00",
+      "total_amount": "14930.00",
+      "payment_status": "paid",
+      "payment_method": "cash",
+      "notes": "POS sale - Customer purchase",
+      "created_at": "2025-10-17T18:30:00.000000Z"
+    },
+    "customer": {
+      "id": 1,
+      "name": "Alex Martinez",
+      "email": "alex@example.com",
+      "mobile_number": "+92 321 2345678"
+    },
+    "transactions": [
+      {
+        "id": 25,
+        "product_id": 1,
+        "quantity": 2,
+        "unit_price": "5500.00",
+        "total_amount": "11000.00",
+        "product": {
+          "id": 1,
+          "name": "BSN N.O.-XPLODE Pre-Workout",
+          "category": "Pre-Workout",
+          "brand": "BSN"
+        }
+      }
+    ]
+  }
+}
+```
+
+---
+
+## POS System Features
+
+### Automatic Stock Management
+- **Stock Validation**: Checks stock availability before creating transactions
+- **Stock Reduction**: Automatically reduces stock when products are sold
+- **Stock Alerts**: Shows low stock warnings in product listings
+
+### Customer Integration
+- **Existing Customers**: Search and select from customer database
+- **Guest Sales**: Process sales without customer registration (customer_id = null)
+- **Transaction History**: All sales are recorded in customer transaction history
+- **Customer Statistics**: Automatically updates customer spending and order counts
+
+### Invoice Generation
+- **Automatic Invoice Numbers**: Generated in format "INV-YYYYMMDD-XXXX"
+- **Multi-Product Support**: Single invoice can contain multiple products
+- **Tax and Discount Support**: Configurable tax and discount calculations
+- **Payment Status Tracking**: Tracks payment method and status
+
+### Payment Processing
+- **Multiple Payment Methods**: Cash, Card, Bank Transfer, Digital Wallet
+- **Real-time Processing**: Immediate payment confirmation
+- **Receipt Generation**: Automatic invoice/receipt creation
+
+---
+
+## POS Frontend Integration Examples
+
+### 1. Complete POS Component
+```javascript
+const POSSystem = () => {
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [discount, setDiscount] = useState(0);
+  const [tax, setTax] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Load products for POS
+  const loadProducts = async (searchTerm = '') => {
+    try {
+      const products = await getProductsForPOS(searchTerm);
+      setProducts(products);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
+
+  // Search customers
+  const searchCustomers = async (searchTerm) => {
+    if (searchTerm.length < 2) return;
+    try {
+      const customers = await searchCustomers(searchTerm);
+      setCustomers(customers);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+    }
+  };
+
+  // Add product to cart
+  const addToCart = (product) => {
+    const existingItem = cart.find(item => item.productId === product.id);
+    
+    if (existingItem) {
+      // Increase quantity
+      setCart(cart.map(item => 
+        item.productId === product.id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      // Add new item
+      setCart([...cart, {
+        productId: product.id,
+        name: product.name,
+        price: parseFloat(product.selling_price),
+        quantity: 1,
+        stock: product.stock
+      }]);
+    }
+  };
+
+  // Update cart item quantity
+  const updateCartQuantity = (productId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    
+    setCart(cart.map(item => 
+      item.productId === productId 
+        ? { ...item, quantity: newQuantity }
+        : item
+    ));
+  };
+
+  // Remove item from cart
+  const removeFromCart = (productId) => {
+    setCart(cart.filter(item => item.productId !== productId));
+  };
+
+  // Calculate totals
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountAmount = (subtotal * discount) / 100;
+  const taxAmount = ((subtotal - discountAmount) * tax) / 100;
+  const total = subtotal - discountAmount + taxAmount;
+
+  // Process POS sale
+  const processSale = async () => {
+    if (cart.length === 0) {
+      alert('Cart is empty');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await processPOSSale(
+        cart,
+        selectedCustomer?.id || null,
+        paymentMethod,
+        discountAmount,
+        taxAmount
+      );
+
+      // Clear cart and reset form
+      setCart([]);
+      setSelectedCustomer(null);
+      setDiscount(0);
+      setTax(0);
+      
+      // Show success message or print receipt
+      alert(`Sale completed! Invoice: ${result.invoice.invoice_number}`);
+      
+    } catch (error) {
+      console.error('Error processing sale:', error);
+      alert('Error processing sale: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  return (
+    <div className="pos-system">
+      {/* Product Catalog */}
+      <div className="product-catalog">
+        <h2>Point of Sale</h2>
+        
+        {/* Search and Filters */}
+        <div className="search-filters">
+          <input
+            type="text"
+            placeholder="Search products..."
+            onChange={(e) => loadProducts(e.target.value)}
+          />
+        </div>
+
+        {/* Product Grid */}
+        <div className="product-grid">
+          {products.map(product => (
+            <div 
+              key={product.id} 
+              className={`product-card ${product.stock_status === 'low' ? 'low-stock' : ''}`}
+              onClick={() => addToCart(product)}
+            >
+              <img src={product.image_url} alt={product.name} />
+              <h3>{product.name}</h3>
+              <p className="price">PKR {parseFloat(product.selling_price).toLocaleString()}</p>
+              <p className={`stock ${product.stock_status}`}>
+                {product.stock} In Stock
+              </p>
+              <p className="category">{product.category} • {product.brand}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Shopping Cart */}
+      <div className="shopping-cart">
+        <div className="cart-header">
+          <h3>Cart ({cart.length} items)</h3>
+          <button onClick={() => setCart([])}>Clear</button>
+        </div>
+
+        {cart.length === 0 ? (
+          <div className="empty-cart">
+            <p>Your cart is empty</p>
+            <p>Click on products to add them to your cart</p>
+          </div>
+        ) : (
+          <>
+            {/* Cart Items */}
+            <div className="cart-items">
+              {cart.map(item => (
+                <div key={item.productId} className="cart-item">
+                  <div className="item-info">
+                    <h4>{item.name}</h4>
+                    <p>PKR {item.price.toLocaleString()}</p>
+                  </div>
+                  <div className="quantity-controls">
+                    <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}>
+                      -
+                    </button>
+                    <span>{item.quantity}</span>
+                    <button 
+                      onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
+                      disabled={item.quantity >= item.stock}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => removeFromCart(item.productId)}
+                    className="remove-btn"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Customer Selection */}
+            <div className="customer-section">
+              <h4>Customer</h4>
+              <input
+                type="text"
+                placeholder="Search customer..."
+                onChange={(e) => searchCustomers(e.target.value)}
+              />
+              
+              {selectedCustomer ? (
+                <div className="selected-customer">
+                  <p><strong>{selectedCustomer.name}</strong></p>
+                  <p>{selectedCustomer.mobile_number}</p>
+                  <button onClick={() => setSelectedCustomer(null)}>Remove</button>
+                </div>
+              ) : (
+                <div className="guest-sale">
+                  <p>Guest Sale</p>
+                  {customers.map(customer => (
+                    <div 
+                      key={customer.id}
+                      className="customer-option"
+                      onClick={() => setSelectedCustomer(customer)}
+                    >
+                      <p><strong>{customer.name}</strong></p>
+                      <p>{customer.mobile_number}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Discount */}
+            <div className="discount-section">
+              <h4>Discount (%)</h4>
+              <input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                min="0"
+                max="100"
+              />
+            </div>
+
+            {/* Payment Method */}
+            <div className="payment-method">
+              <h4>Payment Method</h4>
+              <div className="payment-options">
+                <button 
+                  className={paymentMethod === 'cash' ? 'selected' : ''}
+                  onClick={() => setPaymentMethod('cash')}
+                >
+                  Cash
+                </button>
+                <button 
+                  className={paymentMethod === 'card' ? 'selected' : ''}
+                  onClick={() => setPaymentMethod('card')}
+                >
+                  Card
+                </button>
+                <button 
+                  className={paymentMethod === 'other' ? 'selected' : ''}
+                  onClick={() => setPaymentMethod('bank_transfer')}
+                >
+                  Other
+                </button>
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="order-summary">
+              <div className="summary-row">
+                <span>Subtotal:</span>
+                <span>PKR {subtotal.toLocaleString()}</span>
+              </div>
+              <div className="summary-row">
+                <span>Discount:</span>
+                <span>-PKR {discountAmount.toLocaleString()}</span>
+              </div>
+              <div className="summary-row">
+                <span>Tax (15%):</span>
+                <span>PKR {taxAmount.toLocaleString()}</span>
+              </div>
+              <div className="summary-row total">
+                <span>Total:</span>
+                <span>PKR {total.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Checkout Button */}
+            <button 
+              className="checkout-btn"
+              onClick={processSale}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : `Checkout - PKR ${total.toLocaleString()}`}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. POS Product Card Component
+```javascript
+const POSProductCard = ({ product, onAddToCart }) => {
+  const getStockColor = (status) => {
+    switch(status) {
+      case 'low': return '#ff6b6b';
+      case 'medium': return '#ffd93d';
+      case 'high': return '#6bcf7f';
+      default: return '#6c757d';
+    }
+  };
+
+  return (
+    <div 
+      className="pos-product-card"
+      onClick={() => onAddToCart(product)}
+    >
+      <div className="product-image">
+        <img src={product.image_url || '/placeholder.jpg'} alt={product.name} />
+        {product.stock_status === 'low' && (
+          <div className="low-stock-badge">Low Stock</div>
+        )}
+      </div>
+      
+      <div className="product-info">
+        <h3>{product.name}</h3>
+        <p className="price">PKR {parseFloat(product.selling_price).toLocaleString()}</p>
+        <p 
+          className="stock"
+          style={{ color: getStockColor(product.stock_status) }}
+        >
+          {product.stock} In Stock
+        </p>
+        <p className="category">{product.category} • {product.brand}</p>
+      </div>
+    </div>
+  );
+};
+```
+
+### 3. POS Cart Item Component
+```javascript
+const POSCartItem = ({ item, onUpdateQuantity, onRemove }) => {
+  const handleQuantityChange = (newQuantity) => {
+    onUpdateQuantity(item.productId, newQuantity);
+  };
+
+  return (
+    <div className="pos-cart-item">
+      <div className="item-details">
+        <h4>{item.name}</h4>
+        <p>PKR {item.price.toLocaleString()}</p>
+      </div>
+      
+      <div className="quantity-controls">
+        <button 
+          onClick={() => handleQuantityChange(item.quantity - 1)}
+          disabled={item.quantity <= 1}
+        >
+          -
+        </button>
+        <input 
+          type="number"
+          value={item.quantity}
+          onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+          min="1"
+          max={item.stock}
+        />
+        <button 
+          onClick={() => handleQuantityChange(item.quantity + 1)}
+          disabled={item.quantity >= item.stock}
+        >
+          +
+        </button>
+      </div>
+      
+      <div className="item-total">
+        PKR {(item.price * item.quantity).toLocaleString()}
+      </div>
+      
+      <button 
+        onClick={() => onRemove(item.productId)}
+        className="remove-btn"
+      >
+        🗑️
+      </button>
+    </div>
+  );
+};
+```
+
+---
+
+## POS System Integration Checklist
+
+✅ **Product Management**
+- [x] Load products for POS with stock status
+- [x] Filter active products only
+- [x] Show stock levels and low stock warnings
+- [x] Real-time stock validation
+
+✅ **Customer Management**
+- [x] Search existing customers
+- [x] Support guest sales (no customer)
+- [x] Link sales to customer transaction history
+
+✅ **Shopping Cart**
+- [x] Add/remove products
+- [x] Update quantities
+- [x] Calculate totals with tax and discount
+
+✅ **Payment Processing**
+- [x] Multiple payment methods
+- [x] Automatic invoice generation
+- [x] Stock reduction on sale
+- [x] Customer statistics update
+
+✅ **Invoice Generation**
+- [x] Automatic invoice numbers
+- [x] Multi-product support
+- [x] Tax and discount calculations
+- [x] Thermal printer support
+
+---
+
+## Invoice Management CRUD Endpoints
+
+Complete invoice management system with full CRUD operations, customer search, and bulk operations.
+
+### 43. Get All Invoices (Enhanced)
+**GET** `/invoices`
+
+Retrieves a paginated list of invoices with advanced filtering and search capabilities.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `search` (optional): Search by invoice number, customer name, email, or mobile number
+- `customer_id` (optional): Filter by specific customer ID
+- `customer_name` (optional): Filter by customer name (partial match)
+- `payment_status` (optional): Filter by payment status (`pending`, `paid`, `overdue`, `cancelled`)
+- `payment_method` (optional): Filter by payment method (`cash`, `card`, `bank_transfer`, `digital_wallet`)
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 12,
+        "invoice_number": "INV-20251018-0012",
+        "customer_id": null,
+        "subtotal": "10000.00",
+        "tax_amount": "1500.00",
+        "discount_amount": "0.00",
+        "total_amount": "11500.00",
+        "payment_status": "pending",
+        "payment_status_display": "Pending",
+        "payment_method": "cash",
+        "payment_method_display": "Cash",
+        "notes": "POS sale - Guest sale",
+        "due_date": null,
+        "customer": null,
+        "transactions": [
+          {
+            "id": 25,
+            "product_id": 1,
+            "quantity": 2,
+            "unit_price": "5500.00",
+            "total_amount": "11000.00",
+            "product": {
+              "id": 1,
+              "name": "BSN N.O.-XPLODE Pre-Workout",
+              "category": "Pre-Workout",
+              "brand": "BSN"
+            }
+          }
+        ],
+        "created_at": "2025-10-18T10:30:00.000000Z",
+        "updated_at": "2025-10-18T10:30:00.000000Z"
+      }
+    ],
+    "first_page_url": "http://127.0.0.1:8000/api/invoices?page=1",
+    "from": 1,
+    "last_page": 1,
+    "last_page_url": "http://127.0.0.1:8000/api/invoices?page=1",
+    "links": [],
+    "next_page_url": null,
+    "path": "http://127.0.0.1:8000/api/invoices",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getInvoices = async (filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage examples:
+// getInvoices({ search: 'INV-20251018', payment_status: 'pending' })
+// getInvoices({ customer_name: 'Alex', payment_method: 'cash' })
+// getInvoices({ date_from: '2025-10-01', date_to: '2025-10-31' })
+```
+
+---
+
+### 44. Update Invoice
+**PUT** `/invoices/{id}`
+
+Updates an existing invoice's information. Partial updates are supported.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body (all fields optional)
+```json
+{
+  "customer_id": 1,
+  "tax_amount": 1500.00,
+  "discount_amount": 500.00,
+  "payment_status": "paid",
+  "payment_method": "card",
+  "notes": "Updated payment information",
+  "due_date": "2025-11-18"
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Invoice updated successfully",
+  "data": {
+    "id": 12,
+    "invoice_number": "INV-20251018-0012",
+    "customer_id": 1,
+    "subtotal": "10000.00",
+    "tax_amount": "1500.00",
+    "discount_amount": "500.00",
+    "total_amount": "11000.00",
+    "payment_status": "paid",
+    "payment_method": "card",
+    "notes": "Updated payment information",
+    "customer": {
+      "id": 1,
+      "name": "Alex Martinez",
+      "email": "alex@example.com"
+    },
+    "transactions": [
+      {
+        "id": 25,
+        "product_id": 1,
+        "quantity": 2,
+        "unit_price": "5500.00",
+        "total_amount": "11000.00",
+        "product": {
+          "id": 1,
+          "name": "BSN N.O.-XPLODE Pre-Workout"
+        }
+      }
+    ],
+    "updated_at": "2025-10-18T11:00:00.000000Z"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const updateInvoice = async (invoiceId, updateData) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(updateData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 45. Delete Invoice
+**DELETE** `/invoices/{id}`
+
+Deletes an invoice and restores product stock. This action is irreversible.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Invoice deleted successfully"
+}
+```
+
+#### Important Notes
+- **Stock Restoration**: Product stock will be restored when invoice is deleted
+- **Customer Statistics**: Customer spending and order counts will be updated
+- **Transactions**: All related transactions will be deleted
+- **Irreversible**: This action cannot be undone
+
+#### Frontend Integration Example
+```javascript
+const deleteInvoice = async (invoiceId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const confirmed = confirm('Are you sure you want to delete this invoice? This action will restore product stock and cannot be undone.');
+  if (!confirmed) return;
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.message;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 46. Get Invoices by Customer Name
+**GET** `/invoices-by-customer`
+
+Retrieves all invoices for customers matching the provided name.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `customer_name` (required): Customer name to search for (minimum 2 characters)
+- `payment_status` (optional): Filter by payment status
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "customer_name": "Alex",
+    "invoices": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 12,
+          "invoice_number": "INV-20251018-0012",
+          "customer_id": 1,
+          "total_amount": "11500.00",
+          "payment_status": "paid",
+          "payment_method": "cash",
+          "customer": {
+            "id": 1,
+            "name": "Alex Martinez",
+            "email": "alex@example.com",
+            "mobile_number": "+92 321 2345678"
+          },
+          "transactions": [
+            {
+              "id": 25,
+              "product_id": 1,
+              "quantity": 2,
+              "unit_price": "5500.00",
+              "total_amount": "11000.00",
+              "product": {
+                "id": 1,
+                "name": "BSN N.O.-XPLODE Pre-Workout"
+              }
+            }
+          ],
+          "created_at": "2025-10-18T10:30:00.000000Z"
+        }
+      ],
+      "total": 1
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getInvoicesByCustomerName = async (customerName, filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const queryParams = new URLSearchParams({
+    customer_name: customerName,
+    ...filters
+  });
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices-by-customer?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 47. Bulk Update Invoice Status
+**PUT** `/invoices-bulk-update-status`
+
+Updates payment status for multiple invoices at once.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "invoice_ids": [12, 13, 14, 15],
+  "payment_status": "paid",
+  "payment_method": "card"
+}
+```
+
+#### Field Requirements
+- `invoice_ids` - Required array of invoice IDs (minimum 1)
+- `payment_status` - Required (`pending`, `paid`, `overdue`, `cancelled`)
+- `payment_method` - Optional (`cash`, `card`, `bank_transfer`, `digital_wallet`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Successfully updated 4 invoices",
+  "data": {
+    "updated_count": 4,
+    "invoice_ids": [12, 13, 14, 15]
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const bulkUpdateInvoiceStatus = async (invoiceIds, paymentStatus, paymentMethod = null) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const requestData = {
+    invoice_ids: invoiceIds,
+    payment_status: paymentStatus
+  };
+  
+  if (paymentMethod) {
+    requestData.payment_method = paymentMethod;
+  }
+  
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-update-status', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(requestData)
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 48. Get Invoice Statistics
+**GET** `/invoices-statistics`
+
+Retrieves comprehensive statistics about invoices.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "statistics": {
+      "total_invoices": 150,
+      "total_amount": "675000.00",
+      "paid_invoices": 120,
+      "pending_invoices": 25,
+      "overdue_invoices": 5,
+      "today_sales": "22500.00",
+      "this_month_sales": "180000.00"
+    }
+  }
+}
+```
+
+#### Statistics Breakdown
+- `total_invoices` - Total number of invoices
+- `total_amount` - Sum of all invoice amounts
+- `paid_invoices` - Number of paid invoices
+- `pending_invoices` - Number of pending invoices
+- `overdue_invoices` - Number of overdue invoices
+- `today_sales` - Total sales amount for today
+- `this_month_sales` - Total sales amount for current month
+
+#### Frontend Integration Example
+```javascript
+const getInvoiceStatistics = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-statistics', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.statistics;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Invoice Management Features
+
+### Advanced Search and Filtering
+- **Search by Invoice Number**: Find invoices by partial invoice number match
+- **Search by Customer**: Find invoices by customer name, email, or mobile number
+- **Filter by Payment Status**: pending, paid, overdue, cancelled
+- **Filter by Payment Method**: cash, card, bank_transfer, digital_wallet
+- **Date Range Filtering**: Filter invoices by creation date range
+- **Customer Name Filtering**: Find invoices for specific customers
+
+### CRUD Operations
+- **Create**: Create new invoices (via POS or manual entry)
+- **Read**: View invoice details with customer and transaction information
+- **Update**: Modify invoice details, payment status, and customer information
+- **Delete**: Remove invoices with automatic stock restoration
+
+### Bulk Operations
+- **Bulk Status Update**: Update payment status for multiple invoices at once
+- **Bulk Payment Method Update**: Update payment method for multiple invoices
+
+### Automatic Calculations
+- **Tax Recalculation**: Automatically recalculates totals when tax amounts change
+- **Discount Recalculation**: Automatically recalculates totals when discount amounts change
+- **Customer Statistics**: Updates customer spending and order counts automatically
+
+### Stock Management Integration
+- **Stock Restoration**: Automatically restores product stock when invoices are deleted
+- **Stock Validation**: Prevents overselling during invoice creation
+
+---
+
+## Invoice Management Frontend Integration Examples
+
+### 1. Invoice List Component with Advanced Filtering
+```javascript
+const InvoiceList = () => {
+  const [invoices, setInvoices] = useState([]);
+  const [filters, setFilters] = useState({});
+  const [stats, setStats] = useState(null);
+
+  const loadInvoices = async () => {
+    try {
+      const data = await getInvoices(filters);
+      setInvoices(data.data);
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+    }
+  };
+
+  const loadStatistics = async () => {
+    try {
+      const statistics = await getInvoiceStatistics();
+      setStats(statistics);
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadInvoices();
+    loadStatistics();
+  }, [filters]);
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'paid': return 'text-green-600 bg-green-100';
+      case 'pending': return 'text-yellow-600 bg-yellow-100';
+      case 'overdue': return 'text-red-600 bg-red-100';
+      case 'cancelled': return 'text-gray-600 bg-gray-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  return (
+    <div className="invoice-list">
+      {/* Statistics Dashboard */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="stat-card">
+            <h3>Total Invoices</h3>
+            <p className="text-3xl">{stats.total_invoices}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Paid Invoices</h3>
+            <p className="text-3xl text-green-500">{stats.paid_invoices}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Pending Invoices</h3>
+            <p className="text-3xl text-yellow-500">{stats.pending_invoices}</p>
+          </div>
+          <div className="stat-card">
+            <h3>Total Revenue</h3>
+            <p className="text-3xl">PKR {parseFloat(stats.total_amount).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <div className="filters mb-4">
+        <input
+          type="text"
+          placeholder="Search invoices..."
+          value={filters.search || ''}
+          onChange={(e) => setFilters({...filters, search: e.target.value})}
+        />
+
+        <select 
+          value={filters.payment_status || ''} 
+          onChange={(e) => setFilters({...filters, payment_status: e.target.value})}
+        >
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+
+        <select 
+          value={filters.payment_method || ''} 
+          onChange={(e) => setFilters({...filters, payment_method: e.target.value})}
+        >
+          <option value="">All Payment Methods</option>
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="digital_wallet">Digital Wallet</option>
+        </select>
+      </div>
+
+      {/* Invoice Table */}
+      <div className="invoice-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Total</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map(invoice => (
+              <tr key={invoice.id}>
+                <td>{invoice.invoice_number}</td>
+                <td>{new Date(invoice.created_at).toLocaleDateString()}</td>
+                <td>{invoice.customer ? invoice.customer.name : 'Guest'}</td>
+                <td>PKR {parseFloat(invoice.total_amount).toLocaleString()}</td>
+                <td>{invoice.payment_method_display}</td>
+                <td>
+                  <span className={`status-badge ${getStatusColor(invoice.payment_status)}`}>
+                    {invoice.payment_status_display}
+                  </span>
+                </td>
+                <td>
+                  <button onClick={() => viewInvoice(invoice.id)}>View</button>
+                  <button onClick={() => editInvoice(invoice.id)}>Edit</button>
+                  <button onClick={() => deleteInvoice(invoice.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Invoice Search by Customer Component
+```javascript
+const InvoiceCustomerSearch = () => {
+  const [customerName, setCustomerName] = useState('');
+  const [customerInvoices, setCustomerInvoices] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const searchCustomerInvoices = async () => {
+    if (customerName.length < 2) return;
+    
+    setLoading(true);
+    try {
+      const data = await getInvoicesByCustomerName(customerName);
+      setCustomerInvoices(data.invoices.data);
+    } catch (error) {
+      console.error('Error searching customer invoices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(searchCustomerInvoices, 500);
+    return () => clearTimeout(timeoutId);
+  }, [customerName]);
+
+  return (
+    <div className="customer-invoice-search">
+      <input
+        type="text"
+        placeholder="Search by customer name..."
+        value={customerName}
+        onChange={(e) => setCustomerName(e.target.value)}
+      />
+
+      {loading && <div>Loading...</div>}
+
+      {customerInvoices.length > 0 && (
+        <div className="customer-invoices">
+          <h3>Invoices for "{customerName}"</h3>
+          {customerInvoices.map(invoice => (
+            <div key={invoice.id} className="invoice-card">
+              <h4>{invoice.invoice_number}</h4>
+              <p>Date: {new Date(invoice.created_at).toLocaleDateString()}</p>
+              <p>Total: PKR {parseFloat(invoice.total_amount).toLocaleString()}</p>
+              <p>Status: {invoice.payment_status_display}</p>
+              <p>Customer: {invoice.customer.name}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### 3. Bulk Invoice Status Update Component
+```javascript
+const BulkInvoiceUpdate = () => {
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [paymentStatus, setPaymentStatus] = useState('paid');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [loading, setLoading] = useState(false);
+
+  const handleBulkUpdate = async () => {
+    if (selectedInvoices.length === 0) {
+      alert('Please select at least one invoice');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await bulkUpdateInvoiceStatus(selectedInvoices, paymentStatus, paymentMethod);
+      alert(`Successfully updated ${result.updated_count} invoices`);
+      setSelectedInvoices([]);
+    } catch (error) {
+      console.error('Error updating invoices:', error);
+      alert('Error updating invoices: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bulk-invoice-update">
+      <h3>Bulk Update Invoices</h3>
+      
+      <div className="selected-count">
+        Selected: {selectedInvoices.length} invoices
+      </div>
+
+      <div className="update-controls">
+        <select 
+          value={paymentStatus} 
+          onChange={(e) => setPaymentStatus(e.target.value)}
+        >
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+
+        <select 
+          value={paymentMethod} 
+          onChange={(e) => setPaymentMethod(e.target.value)}
+        >
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="digital_wallet">Digital Wallet</option>
+        </select>
+
+        <button 
+          onClick={handleBulkUpdate}
+          disabled={loading || selectedInvoices.length === 0}
+        >
+          {loading ? 'Updating...' : 'Update Selected'}
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## Invoice Customer Linking Endpoints
+
+### 49. Link Invoice to Customer
+**PUT** `/invoices/{id}/link-customer`
+
+Links an existing invoice to a customer. Useful for fixing invoices that were created without customer information.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "customer_id": 1
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Invoice linked to customer successfully",
+  "data": {
+    "id": 12,
+    "invoice_number": "INV-20251018-0012",
+    "customer_id": 1,
+    "total_amount": "11500.00",
+    "payment_status": "paid",
+    "customer": {
+      "id": 1,
+      "name": "Alex Martinez",
+      "email": "alex@example.com"
+    },
+    "customer_name_display": "Alex Martinez"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const linkInvoiceToCustomer = async (invoiceId, customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}/link-customer`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ customer_id: customerId })
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 50. Get Guest Invoices (Invoices without Customers)
+**GET** `/invoices-guest`
+
+Retrieves all invoices that don't have a customer linked (showing as "Guest").
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `payment_status` (optional): Filter by payment status
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 12,
+        "invoice_number": "INV-20251018-0012",
+        "customer_id": null,
+        "total_amount": "11500.00",
+        "payment_status": "pending",
+        "customer_name_display": "Guest",
+        "transactions": [
+          {
+            "id": 25,
+            "product_id": 1,
+            "quantity": 2,
+            "unit_price": "5500.00",
+            "total_amount": "11000.00",
+            "product": {
+              "id": 1,
+              "name": "BSN N.O.-XPLODE Pre-Workout"
+            }
+          }
+        ]
+      }
+    ],
+    "total": 8
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getGuestInvoices = async (filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices-guest?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 51. Bulk Link Invoices to Customer
+**PUT** `/invoices-bulk-link-customer`
+
+Links multiple invoices to a customer at once. Perfect for fixing multiple guest invoices.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "invoice_ids": [12, 13, 14, 15],
+  "customer_id": 1
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "message": "Successfully linked 4 invoices to customer",
+  "data": {
+    "linked_count": 4,
+    "customer_id": 1,
+    "total_amount": "46000.00"
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const bulkLinkInvoicesToCustomer = async (invoiceIds, customerId) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-link-customer', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      invoice_ids: invoiceIds,
+      customer_id: customerId
+    })
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+## Fixing Guest Invoice Issue - Complete Solution
+
+### Problem Diagnosis
+Your invoices are showing as "Guest" because they have `customer_id: null` in the database. This happens when:
+1. Invoices are created without linking to a customer
+2. Customer data is not properly passed during invoice creation
+3. Frontend sends `null` or empty `customer_id`
+
+### Solution Steps
+
+#### Step 1: Check Current Situation
+```javascript
+// Get statistics to see how many guest invoices you have
+const getStats = async () => {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-statistics', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await response.json();
+  console.log('Guest invoices:', data.data.statistics.guest_invoices);
+  console.log('Customer invoices:', data.data.statistics.customer_invoices);
+};
+```
+
+#### Step 2: Get Guest Invoices
+```javascript
+// Get all invoices that need to be linked to customers
+const getGuestInvoices = async () => {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-guest', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await response.json();
+  return data.data.data; // Array of guest invoices
+};
+```
+
+#### Step 3: Link Invoices to Customers
+```javascript
+// Link individual invoice
+const linkInvoice = async (invoiceId, customerId) => {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}/link-customer`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ customer_id: customerId })
+  });
+  return response.json();
+};
+
+// Bulk link multiple invoices
+const bulkLinkInvoices = async (invoiceIds, customerId) => {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-link-customer', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      invoice_ids: invoiceIds,
+      customer_id: customerId
+    })
+  });
+  return response.json();
+};
+```
+
+#### Step 4: Frontend Invoice Management Component
+```javascript
+const InvoiceCustomerManager = () => {
+  const [guestInvoices, setGuestInvoices] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState('');
+
+  useEffect(() => {
+    loadGuestInvoices();
+    loadCustomers();
+  }, []);
+
+  const loadGuestInvoices = async () => {
+    try {
+      const data = await getGuestInvoices();
+      setGuestInvoices(data);
+    } catch (error) {
+      console.error('Error loading guest invoices:', error);
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/customers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setCustomers(data.data.data);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
+  };
+
+  const handleBulkLink = async () => {
+    if (selectedInvoices.length === 0 || !selectedCustomer) {
+      alert('Please select invoices and a customer');
+      return;
+    }
+
+    try {
+      const result = await bulkLinkInvoices(selectedInvoices, selectedCustomer);
+      alert(`Successfully linked ${result.linked_count} invoices`);
+      setSelectedInvoices([]);
+      loadGuestInvoices(); // Refresh the list
+    } catch (error) {
+      console.error('Error linking invoices:', error);
+      alert('Error linking invoices: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="invoice-customer-manager">
+      <h3>Link Guest Invoices to Customers</h3>
+      
+      <div className="customer-selector">
+        <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)}>
+          <option value="">Select Customer</option>
+          {customers.map(customer => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name} ({customer.email})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="guest-invoices">
+        <h4>Guest Invoices ({guestInvoices.length})</h4>
+        {guestInvoices.map(invoice => (
+          <div key={invoice.id} className="invoice-item">
+            <input
+              type="checkbox"
+              checked={selectedInvoices.includes(invoice.id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedInvoices([...selectedInvoices, invoice.id]);
+                } else {
+                  setSelectedInvoices(selectedInvoices.filter(id => id !== invoice.id));
+                }
+              }}
+            />
+            <span>{invoice.invoice_number}</span>
+            <span>PKR {parseFloat(invoice.total_amount).toLocaleString()}</span>
+            <span>{invoice.payment_status_display}</span>
+            <span>{new Date(invoice.created_at).toLocaleDateString()}</span>
+          </div>
+        ))}
+      </div>
+
+      <button 
+        onClick={handleBulkLink}
+        disabled={selectedInvoices.length === 0 || !selectedCustomer}
+      >
+        Link Selected Invoices to Customer
+      </button>
+    </div>
+  );
+};
+```
+
+### Prevention for Future Invoices
+
+#### 1. Always Include Customer ID in POS
+```javascript
+// When creating invoices from POS, always include customer_id
+const createInvoice = async (invoiceData) => {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      customer_id: invoiceData.customerId || null, // Don't omit this field
+      transactions: invoiceData.transactions,
+      payment_method: invoiceData.paymentMethod,
+      // ... other fields
+    })
+  });
+  return response.json();
+};
+```
+
+#### 2. Validate Customer Selection in Frontend
+```javascript
+const validateInvoiceData = (invoiceData) => {
+  if (!invoiceData.customerId && invoiceData.customerType !== 'guest') {
+    throw new Error('Please select a customer or mark as guest');
+  }
+  return true;
+};
+```
+
+---
+
+## Invoice Management Integration Checklist
+
+✅ **CRUD Operations**
+- [x] Create invoices (via POS system)
+- [x] Read/View invoice details
+- [x] Update invoice information
+- [x] Delete invoices with stock restoration
+
+✅ **Advanced Search & Filtering**
+- [x] Search by invoice number
+- [x] Search by customer name, email, mobile
+- [x] Filter by payment status
+- [x] Filter by payment method
+- [x] Date range filtering
+- [x] Customer name filtering
+
+✅ **Bulk Operations**
+- [x] Bulk status updates
+- [x] Bulk payment method updates
+- [x] Multi-invoice selection
+
+✅ **Statistics & Reporting**
+- [x] Invoice statistics dashboard
+- [x] Payment status summaries
+- [x] Revenue tracking
+- [x] Daily/monthly sales reports
+
+✅ **Integration Features**
+- [x] Customer statistics updates
+- [x] Product stock management
+- [x] Automatic calculations
+- [x] Transaction history linking
+
+---
+
 ## Thermal Printer Integration
 
 ### Thermal Printer Invoice Format

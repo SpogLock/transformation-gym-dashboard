@@ -46,9 +46,14 @@ import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import InventoryTableRow from "./InventoryTableRow";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { useSearch } from "contexts/SearchContext";
+import { useProducts } from "contexts/ProductContext";
+import AddProductModal from "components/Modals/AddProductModal";
+import EditProductModal from "components/Modals/EditProductModal";
+import AppLoader from "components/Loaders/AppLoader";
+import EmptyState from "components/EmptyState/EmptyState";
 import whey_dummy from "assets/img/whey_dummy.png";
 
 const InventoryTable = ({ title }) => {
@@ -67,6 +72,16 @@ const InventoryTable = ({ title }) => {
   const { searchQuery, filters, updateFilters, clearFilters } = useSearch();
   const toast = useToast();
   
+  // Product context
+  const { products, loading, fetchAllProducts, removeProduct } = useProducts();
+  const [editingProduct, setEditingProduct] = useState(null);
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  
+  // Fetch products on mount
+  useEffect(() => {
+    fetchAllProducts();
+  }, [fetchAllProducts]);
+
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
 
@@ -74,93 +89,35 @@ const InventoryTable = ({ title }) => {
   const getFilterCount = () => {
     return Object.values(filters).filter(filter => filter !== '').length;
   };
-  
-  // Inventory management data
-  const [inventoryData, setInventoryData] = useState([
-    {
-      id: 1,
-      image: whey_dummy,
-      productName: "Optimum Nutrition Gold Standard Whey",
-      category: "Protein Powder",
-      stockQuantity: 15,
-      costPrice: 4500,
-      sellingPrice: 7500,
-      supplier: "Optimum Nutrition",
-      lastUpdated: "2024-01-15",
-      description: "Premium whey protein powder with 24g of protein per serving. Contains essential amino acids and supports muscle recovery and growth.",
-      recentSales: [
-        { date: "2024-01-14", quantity: 2, total: 15000 },
-        { date: "2024-01-12", quantity: 1, total: 7500 }
-      ]
-    },
-    {
-      id: 2,
-      image: whey_dummy,
-      productName: "Dymatize ISO100 Whey Protein",
-      category: "Protein Powder",
-      stockQuantity: 22,
-      costPrice: 5200,
-      sellingPrice: 8500,
-      supplier: "Dymatize Nutrition",
-      lastUpdated: "2024-01-20",
-      description: "Hydrolyzed whey protein isolate with 25g of protein per serving. Fast-absorbing formula for post-workout recovery.",
-      recentSales: [
-        { date: "2024-01-19", quantity: 3, total: 25500 },
-        { date: "2024-01-18", quantity: 1, total: 8500 }
-      ]
-    },
-    {
-      id: 3,
-      image: whey_dummy,
-      productName: "MuscleTech Creatine Monohydrate",
-      category: "Creatine",
-      stockQuantity: 45,
-      costPrice: 1800,
-      sellingPrice: 3200,
-      supplier: "MuscleTech",
-      lastUpdated: "2024-01-18",
-      description: "Pure creatine monohydrate powder for increased strength, power, and muscle mass. 100% pure and unflavored.",
-      recentSales: [
-        { date: "2024-01-17", quantity: 2, total: 6400 },
-        { date: "2024-01-16", quantity: 1, total: 3200 }
-      ]
-    },
-    {
-      id: 4,
-      image: whey_dummy,
-      productName: "BSN N.O.-XPLODE Pre-Workout",
-      category: "Pre-Workout",
-      stockQuantity: 8,
-      costPrice: 3200,
-      sellingPrice: 5500,
-      supplier: "BSN",
-      lastUpdated: "2024-01-16",
-      description: "Advanced pre-workout supplement with caffeine, creatine, and beta-alanine for explosive energy and performance.",
-      recentSales: [
-        { date: "2024-01-15", quantity: 4, total: 22000 },
-        { date: "2024-01-13", quantity: 2, total: 11000 }
-      ]
-    },
-    {
-      id: 5,
-      image: whey_dummy,
-      productName: "Universal Animal Pak Multivitamin",
-      category: "Multivitamin",
-      stockQuantity: 35,
-      costPrice: 2800,
-      sellingPrice: 4800,
-      supplier: "Universal Nutrition",
-      lastUpdated: "2024-01-22",
-      description: "Comprehensive multivitamin and mineral supplement with 11 tablets per pack. Complete nutritional foundation for athletes.",
-      recentSales: [
-        { date: "2024-01-21", quantity: 1, total: 4800 },
-        { date: "2024-01-20", quantity: 3, total: 14400 }
-      ]
-    }
-  ]);
 
-  const handleAddProduct = (newProduct) => {
-    setInventoryData(prev => [...prev, newProduct]);
+  // Handle edit product
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    onEditOpen();
+  };
+
+  // Handle delete product
+  const handleDeleteProduct = async (productId, productName) => {
+    if (window.confirm(`Are you sure you want to delete ${productName}?`)) {
+      try {
+        await removeProduct(productId);
+        toast({
+          title: 'Product Deleted',
+          description: `${productName} has been deleted successfully`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to delete product',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    }
   };
 
   // Check stock status
@@ -174,9 +131,25 @@ const InventoryTable = ({ title }) => {
     }
   };
 
+  // Map API products to display format
+  const mapProductToDisplay = (product) => ({
+    id: product.id,
+    image: product.image_url || whey_dummy,
+    productName: product.name,
+    category: product.category,
+    stockQuantity: product.stock,
+    costPrice: parseFloat(product.cost_price),
+    sellingPrice: parseFloat(product.selling_price),
+    supplier: product.supplier,
+    lastUpdated: product.updated_at ? new Date(product.updated_at).toISOString().split('T')[0] : 'N/A',
+    description: product.description || '',
+    // Store the full product object for editing
+    _fullProduct: product,
+  });
+
   // Filter and search products
   const getFilteredProducts = () => {
-    let filteredData = [...inventoryData];
+    let filteredData = products.map(mapProductToDisplay);
 
     // Search filter
     if (searchQuery.trim()) {
@@ -207,6 +180,55 @@ const InventoryTable = ({ title }) => {
   };
 
   const filteredProducts = getFilteredProducts();
+
+  // Show loader while fetching
+  if (loading && products.length === 0) {
+    return <AppLoader message="Loading inventory..." fullHeight />;
+  }
+
+  // Show empty state if no products
+  if (!loading && products.length === 0) {
+    return (
+      <Card>
+        <CardHeader p='6px 0px 22px 0px'>
+          <Flex 
+            justifyContent={{ base: "flex-start", md: "space-between" }} 
+            alignItems="center" 
+            width="100%" 
+            flexWrap="wrap" 
+            gap={2}
+            flexDirection={{ base: "row", md: "row" }}
+          >
+            <Text 
+              fontSize={{ base: "sm", md: "md" }} 
+              color={textColor} 
+              fontWeight='bold' 
+              flexShrink={0}
+            >
+              Inventory Management
+            </Text>
+            <Button
+              size="xs"
+              colorScheme="brand"
+              leftIcon={<AddIcon />}
+              onClick={onOpen}
+            >
+              Add Product
+            </Button>
+          </Flex>
+        </CardHeader>
+        <CardBody>
+          <EmptyState
+            title="No Products Yet"
+            description="Start building your inventory by adding your first product. Track stock, manage pricing, and monitor your product catalog all in one place."
+            actionLabel="Add First Product"
+            onAction={onOpen}
+          />
+        </CardBody>
+        <AddProductModal isOpen={isOpen} onClose={onClose} />
+      </Card>
+    );
+  }
 
   // Navigate to product details
   const handleProductClick = (product) => {
@@ -448,6 +470,9 @@ const InventoryTable = ({ title }) => {
                           height: "100%",
                           objectFit: "cover"
                         }}
+                        onError={(e) => {
+                          e.target.src = whey_dummy;
+                        }}
                       />
                     </Box>
                     <VStack align="start" spacing={0}>
@@ -529,6 +554,9 @@ const InventoryTable = ({ title }) => {
                           width: "100%",
                           height: "100%",
                           objectFit: "cover"
+                        }}
+                        onError={(e) => {
+                          e.target.src = whey_dummy;
                         }}
                       />
                     </Box>
@@ -633,6 +661,8 @@ const InventoryTable = ({ title }) => {
                     onMouseEnter={(e) => handleMouseEnter(row, e)}
                     onMouseLeave={handleMouseLeave}
                     onClick={() => handleProductClick(row)}
+                    onEdit={() => handleEditProduct(row)}
+                    onDelete={() => handleDeleteProduct(row.id, row.productName)}
                   />
                 );
               })}
@@ -644,6 +674,21 @@ const InventoryTable = ({ title }) => {
       
       {/* Hover Modal */}
       <HoverModal />
+      
+      {/* Add Product Modal */}
+      <AddProductModal isOpen={isOpen} onClose={onClose} />
+      
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <EditProductModal 
+          isOpen={isEditOpen} 
+          onClose={() => {
+            onEditClose();
+            setEditingProduct(null);
+          }} 
+          product={editingProduct._fullProduct || editingProduct} 
+        />
+      )}
       
       {/* CSS Animation */}
       <style jsx global>{`

@@ -27,6 +27,7 @@ import {
   TimeIcon,
 } from "@chakra-ui/icons";
 import React from "react";
+import whey_dummy from "assets/img/whey_dummy.png";
 
 function InventoryTableRow(props) {
   const { 
@@ -41,7 +42,9 @@ function InventoryTableRow(props) {
     lastUpdated,
     onMouseEnter,
     onMouseLeave,
-    onClick
+    onClick,
+    onEdit,
+    onDelete
   } = props;
   const textColor = useColorModeValue("gray.700", "white");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -103,6 +106,10 @@ function InventoryTableRow(props) {
             w="100%"
             h="100%"
             objectFit="cover"
+            fallbackSrc={whey_dummy}
+            onError={(e) => {
+              e.target.src = whey_dummy;
+            }}
           />
         </Box>
       </Td>
@@ -190,7 +197,7 @@ function InventoryTableRow(props) {
               icon={<EditIcon />}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log("Edit product:", productName);
+                if (onEdit) onEdit();
               }}
               _hover={{
                 bg: "brand.50"
@@ -209,7 +216,7 @@ function InventoryTableRow(props) {
               icon={<DeleteIcon />}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log("Delete product:", productName);
+                if (onDelete) onDelete();
               }}
               _hover={{
                 bg: "red.50"

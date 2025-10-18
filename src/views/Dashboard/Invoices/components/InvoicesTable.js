@@ -22,14 +22,23 @@ import {
   MenuList,
   MenuItem,
   useToast,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Select,
+  Spinner,
+  Center,
 } from "@chakra-ui/react";
 import { SearchIcon, EditIcon, DeleteIcon, ViewIcon, DownloadIcon, EmailIcon, HamburgerIcon, SettingsIcon } from "@chakra-ui/icons";
 import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import InvoicesTableRow from "./InvoicesTableRow";
-import React, { useState } from "react";
+import AppLoader from "components/Loaders/AppLoader";
+import EmptyState from "components/EmptyState/EmptyState";
+import React, { useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
+import { getAllInvoices, getGuestInvoices, linkInvoiceToCustomer, bulkLinkInvoicesToCustomer, printInvoice, downloadInvoice } from "services/invoiceService";
 
 const InvoicesTable = () => {
   const textColor = useColorModeValue("gray.700", "white");
@@ -42,128 +51,104 @@ const InvoicesTable = () => {
   const history = useHistory();
   const toast = useToast();
 
+  // State for data and loading
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // State for search and filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [showGuestOnly, setShowGuestOnly] = useState(false);
 
-  // Sample invoices data
-  const sampleInvoices = [
-    {
-      id: "INV001",
-      date: "2024-01-25",
-      customer: { id: 1, name: "Asim Khan", phone: "+92 321 2345678" },
-      total: 15000,
-      paymentType: "Card",
-      status: "Paid",
-      products: [
-        { id: 1, name: "Optimum Nutrition Gold Standard Whey", quantity: 2, price: 7500, thumbnail: "whey_dummy" },
-      ],
-      discount: 0,
-      tax: 2250,
-      subtotal: 12750,
-      notes: "Online payment via credit card."
-    },
-    {
-      id: "INV002",
-      date: "2024-01-24",
-      customer: { id: 2, name: "Fatima Ali", phone: "+92 300 1234567" },
-      total: 8500,
-      paymentType: "Cash",
-      status: "Paid",
-      products: [
-        { id: 2, name: "Dymatize ISO100 Whey Protein", quantity: 1, price: 8500, thumbnail: "whey_dummy" },
-      ],
-      discount: 0,
-      tax: 1275,
-      subtotal: 7225,
-      notes: "Cash payment at counter."
-    },
-    {
-      id: "INV003",
-      date: "2024-01-23",
-      customer: { id: 3, name: "Ahmed Hassan", phone: "+92 333 9876543" },
-      total: 6400,
-      paymentType: "Card",
-      status: "Pending",
-      products: [
-        { id: 3, name: "MuscleTech Creatine Monohydrate", quantity: 2, price: 3200, thumbnail: "whey_dummy" },
-      ],
-      discount: 0,
-      tax: 960,
-      subtotal: 5440,
-      notes: "Payment pending due to card issue."
-    },
-    {
-      id: "INV004",
-      date: "2024-01-22",
-      customer: { id: 4, name: "Sara Ahmed", phone: "+92 301 4567890" },
-      total: 22000,
-      paymentType: "Other",
-      status: "Refunded",
-      products: [
-        { id: 4, name: "BSN N.O.-XPLODE Pre-Workout", quantity: 4, price: 5500, thumbnail: "whey_dummy" },
-      ],
-      discount: 0,
-      tax: 3300,
-      subtotal: 18700,
-      notes: "Product returned, full refund issued."
-    },
-    {
-      id: "INV005",
-      date: "2024-01-21",
-      customer: { id: 5, name: "Usman Sheikh", phone: "+92 302 7890123" },
-      total: 4800,
-      paymentType: "Cash",
-      status: "Paid",
-      products: [
-        { id: 5, name: "Universal Animal Pak Multivitamin", quantity: 1, price: 4800, thumbnail: "whey_dummy" },
-      ],
-      discount: 0,
-      tax: 720,
-      subtotal: 4080,
-      notes: "Cash payment."
-    },
-    {
-      id: "INV006",
-      date: "2024-01-20",
-      customer: { name: "Guest" },
-      total: 10000,
-      paymentType: "Cash",
-      status: "Paid",
-      products: [
-        { id: 1, name: "Optimum Nutrition Gold Standard Whey", quantity: 1, price: 7500, thumbnail: "whey_dummy" },
-        { id: 3, name: "MuscleTech Creatine Monohydrate", quantity: 1, price: 3200, thumbnail: "whey_dummy" },
-      ],
-      discount: 700,
-      tax: 1500,
-      subtotal: 10700,
-      notes: "Guest sale, cash payment."
+  // Load invoices from API
+  const loadInvoices = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const filters = {
+        search: searchQuery,
+        payment_status: statusFilter,
+        payment_method: paymentFilter,
+        date_from: dateFilter,
+        sort_by: 'created_at',
+        sort_order: 'desc'
+      };
+      
+      const data = showGuestOnly ? await getGuestInvoices(filters) : await getAllInvoices(filters);
+      
+      // Debug: Log the API response structure
+      console.log('Invoices API Response:', data);
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      if (data && data.length > 0) {
+        console.log('First invoice structure:', data[0]);
+        console.log('Customer data:', data[0].customer);
+      }
+      
+      // Handle different possible response structures
+      let invoicesArray = [];
+      if (Array.isArray(data)) {
+        invoicesArray = data;
+      } else if (data && Array.isArray(data.invoices)) {
+        invoicesArray = data.invoices;
+      } else if (data && Array.isArray(data.data)) {
+        invoicesArray = data.data;
+      } else if (data && data.invoices && Array.isArray(data.invoices.data)) {
+        invoicesArray = data.invoices.data;
+      } else {
+        console.warn('Unexpected API response structure:', data);
+        invoicesArray = [];
+      }
+      
+      console.log('Processed invoices array:', invoicesArray);
+      setInvoices(invoicesArray);
+    } catch (err) {
+      console.error('Failed to load invoices:', err);
+      setError(err.message);
+      setInvoices([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, [searchQuery, statusFilter, paymentFilter, dateFilter, showGuestOnly]);
 
-  // Filter invoices based on search and filters
+  // Load invoices on component mount and when filters change
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
+
+  // Filter invoices based on search and filters (client-side filtering as fallback)
   const getFilteredInvoices = () => {
-    return sampleInvoices.filter(invoice => {
+    // Ensure invoices is an array
+    if (!invoices || !Array.isArray(invoices) || invoices.length === 0) return [];
+    
+    return invoices.filter(invoice => {
       const matchesSearch = 
-        invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        invoice.customer.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter ? invoice.status === statusFilter : true;
-      const matchesPaymentType = paymentFilter ? invoice.paymentType === paymentFilter : true;
-      const matchesDate = dateFilter ? invoice.date === dateFilter : true;
+        invoice.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        invoice.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        invoice.customer?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (invoice.customer_id && `customer #${invoice.customer_id}`.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesStatus = statusFilter ? invoice.payment_status === statusFilter : true;
+      const matchesPaymentType = paymentFilter ? invoice.payment_method === paymentFilter : true;
+      const matchesDate = dateFilter ? invoice.created_at?.startsWith(dateFilter) : true;
 
       return matchesSearch && matchesStatus && matchesPaymentType && matchesDate;
     });
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Paid":
+    switch (status?.toLowerCase()) {
+      case "paid":
         return "green";
-      case "Pending":
+      case "pending":
         return "yellow";
-      case "Refunded":
+      case "overdue":
+        return "red";
+      case "cancelled":
         return "red";
       default:
         return "gray";
@@ -174,21 +159,53 @@ const InvoicesTable = () => {
     history.push(`/admin/invoice-detail?invoiceId=${invoice.id}`);
   };
 
-  const handlePrintInvoice = (invoice) => {
-    toast({
-      title: "Invoice Printed",
-      description: `Invoice ${invoice.id} has been printed`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
+  const handlePrintInvoice = async (invoice) => {
+    try {
+      await printInvoice(invoice.id);
+      toast({
+        title: "Invoice Printed",
+        description: `Invoice ${invoice.invoice_number} has been sent to printer`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: "Print Failed",
+        description: error.message || "Failed to print invoice",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleDownloadInvoice = async (invoice) => {
+    try {
+      await downloadInvoice(invoice.id, invoice.invoice_number);
+      toast({
+        title: "Invoice Downloaded",
+        description: `Invoice ${invoice.invoice_number} has been downloaded`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: error.message || "Failed to download invoice",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleEmailInvoice = (invoice) => {
     toast({
-      title: "Invoice Emailed",
-      description: `Invoice ${invoice.id} has been emailed to customer`,
-      status: "success",
+      title: "Email Feature",
+      description: "Email functionality will be implemented soon",
+      status: "info",
       duration: 3000,
       isClosable: true,
     });
@@ -196,8 +213,8 @@ const InvoicesTable = () => {
 
   const handleDeleteInvoice = (invoice) => {
     toast({
-      title: "Invoice Deleted",
-      description: `Invoice ${invoice.id} has been deleted`,
+      title: "Delete Feature",
+      description: "Delete functionality will be implemented soon",
       status: "info",
       duration: 3000,
       isClosable: true,
@@ -215,6 +232,33 @@ const InvoicesTable = () => {
     { key: "Actions", width: "14%" }
   ];
 
+  // Show loading state
+  if (loading) {
+    return (
+      <Card>
+        <CardBody>
+          <AppLoader message="Loading invoices..." fullHeight />
+        </CardBody>
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Card>
+        <CardBody>
+          <EmptyState
+            title="Failed to Load Invoices"
+            description={error}
+            actionText="Try Again"
+            onAction={loadInvoices}
+          />
+        </CardBody>
+      </Card>
+    );
+  }
+
   return (
     <Card overflowX={{ sm: "scroll", xl: "hidden" }}>
       <CardHeader p='6px 0px 22px 0px'>
@@ -224,7 +268,7 @@ const InvoicesTable = () => {
           width="100%" 
           flexWrap="wrap" 
           gap={2}
-          flexDirection={{ base: "row", md: "row" }}
+          flexDirection={{ base: "column", md: "row" }}
         >
           <Text 
             fontSize={{ base: "sm", md: "md" }} 
@@ -234,23 +278,90 @@ const InvoicesTable = () => {
           >
             Invoices & Orders
           </Text>
-          <Flex gap="4px" flexShrink={0} ms={{ base: "auto", md: "auto" }}>
+          
+          {/* Search and Filters */}
+          <Flex 
+            gap="8px" 
+            flexShrink={0} 
+            ms={{ base: "auto", md: "auto" }}
+            flexDirection={{ base: "column", md: "row" }}
+            w={{ base: "100%", md: "auto" }}
+          >
+            {/* Search Input */}
+            <InputGroup size="sm" minW="200px">
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.300" />
+              </InputLeftElement>
+              <Input
+                placeholder="Search invoices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                bg={cardBg}
+                borderColor={borderColor}
+              />
+            </InputGroup>
+
+            {/* Status Filter */}
+            <Select
+              size="sm"
+              placeholder="All Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              minW="120px"
+              bg={cardBg}
+              borderColor={borderColor}
+            >
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="overdue">Overdue</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+
+            {/* Payment Method Filter */}
+            <Select
+              size="sm"
+              placeholder="All Payment"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              minW="120px"
+              bg={cardBg}
+              borderColor={borderColor}
+            >
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="digital_wallet">Digital Wallet</option>
+            </Select>
+
+            {/* Guest Invoices Toggle */}
+            <Button
+              size="sm"
+              variant={showGuestOnly ? "solid" : "outline"}
+              colorScheme={showGuestOnly ? "orange" : "gray"}
+              onClick={() => setShowGuestOnly(!showGuestOnly)}
+              px={3}
+              fontSize="sm"
+            >
+              {showGuestOnly ? "Show All" : "Guest Only"}
+            </Button>
+
+            {/* Actions Menu */}
             <Menu>
               <MenuButton
                 as={Button}
                 variant="outline"
                 colorScheme="brand"
-                size="xs"
+                size="sm"
                 leftIcon={<HamburgerIcon />}
-                px={2}
-                fontSize="xs"
+                px={3}
+                fontSize="sm"
               >
                 Actions
               </MenuButton>
               <MenuList>
                 <MenuItem icon={<SettingsIcon />}>
                   <HStack justify="space-between" w="full">
-                    <Text>Filters</Text>
+                    <Text>Advanced Filters</Text>
                   </HStack>
                 </MenuItem>
                 <MenuItem icon={<DownloadIcon />}>Export CSV</MenuItem>
@@ -261,7 +372,20 @@ const InvoicesTable = () => {
       </CardHeader>
       
       <CardBody>
-        {isMobile ? (
+        {/* Show empty state if no invoices */}
+        {getFilteredInvoices().length === 0 ? (
+          <EmptyState
+            title="No Invoices Found"
+            description={invoices.length === 0 ? "No invoices have been created yet" : "No invoices match your current filters"}
+            actionText={invoices.length === 0 ? "Create First Invoice" : "Clear Filters"}
+            onAction={invoices.length === 0 ? () => history.push('/admin/pos') : () => {
+              setSearchQuery("");
+              setStatusFilter("");
+              setPaymentFilter("");
+              setDateFilter("");
+            }}
+          />
+        ) : isMobile ? (
           // Mobile List View - Minimal Info
           <VStack spacing={3} align="stretch" w="100%">
             {getFilteredInvoices().map((invoice, index) => (
@@ -295,26 +419,26 @@ const InvoicesTable = () => {
                   <HStack spacing={3}>
                     <VStack align="start" spacing={0}>
                       <Text fontSize="md" fontWeight="bold" color={textColor}>
-                        {invoice.id}
+                        {invoice.invoice_number}
                       </Text>
                       <Text fontSize="xs" color={cardLabelColor}>
-                        {invoice.date}
+                        {new Date(invoice.created_at).toLocaleDateString()}
                       </Text>
                       <Text fontSize="xs" color={cardLabelColor}>
-                        {invoice.customer.name}
+                        {invoice.customer?.name || (invoice.customer_id ? `Customer #${invoice.customer_id}` : 'Guest')}
                       </Text>
                     </VStack>
                   </HStack>
                   <VStack align="end" spacing={1}>
                     <Text fontSize="sm" color={textColor} fontWeight="500">
-                      PKR {invoice.total.toLocaleString()}
+                      PKR {parseFloat(invoice.total_amount || 0).toLocaleString()}
                     </Text>
                     <Badge
-                      colorScheme={getStatusColor(invoice.status)}
+                      colorScheme={getStatusColor(invoice.payment_status)}
                       variant="subtle"
                       fontSize="xs"
                     >
-                      {invoice.status}
+                      {invoice.payment_status_display || invoice.payment_status}
                     </Badge>
                   </VStack>
                 </Flex>
@@ -355,21 +479,21 @@ const InvoicesTable = () => {
                 <Flex justifyContent="space-between" alignItems="center" mb={3}>
                   <VStack align="start" spacing={1}>
                     <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                      {invoice.id}
+                      {invoice.invoice_number}
                     </Text>
                     <Text fontSize="sm" color={cardLabelColor}>
-                      {invoice.date} • {invoice.customer.name}
+                      {new Date(invoice.created_at).toLocaleDateString()} • {invoice.customer?.name || (invoice.customer_id ? `Customer #${invoice.customer_id}` : 'Guest')}
                     </Text>
                   </VStack>
                   <Badge
-                    colorScheme={getStatusColor(invoice.status)}
+                    colorScheme={getStatusColor(invoice.payment_status)}
                     variant="subtle"
                     fontSize="sm"
                     px={3}
                     py={1}
                     borderRadius="full"
                   >
-                    {invoice.status}
+                    {invoice.payment_status_display || invoice.payment_status}
                   </Badge>
                 </Flex>
 
@@ -386,7 +510,7 @@ const InvoicesTable = () => {
                         Total Amount
                       </Text>
                       <Text fontSize="sm" fontWeight="bold" color={textColor}>
-                        PKR {invoice.total.toLocaleString()}
+                        PKR {parseFloat(invoice.total_amount || 0).toLocaleString()}
                       </Text>
                     </VStack>
                     <VStack align="start" spacing={1}>
@@ -394,7 +518,7 @@ const InvoicesTable = () => {
                         Payment Method
                       </Text>
                       <Text fontSize="sm" fontWeight="bold" color={textColor}>
-                        {invoice.paymentType}
+                        {invoice.payment_method_display || invoice.payment_method}
                       </Text>
                     </VStack>
                   </Box>
@@ -446,6 +570,7 @@ const InvoicesTable = () => {
                     invoice={invoice}
                     onClick={() => handleInvoiceClick(invoice)}
                     onPrint={() => handlePrintInvoice(invoice)}
+                    onDownload={() => handleDownloadInvoice(invoice)}
                     onEmail={() => handleEmailInvoice(invoice)}
                     onDelete={() => handleDeleteInvoice(invoice)}
                   />

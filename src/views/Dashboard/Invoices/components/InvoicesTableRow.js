@@ -29,6 +29,7 @@ function InvoicesTableRow(props) {
     invoice,
     onClick,
     onPrint,
+    onDownload,
     onEmail,
     onDelete
   } = props;
@@ -36,12 +37,14 @@ function InvoicesTableRow(props) {
   const borderColor = useColorModeValue("gray.200", "gray.600");
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Paid":
+    switch (status?.toLowerCase()) {
+      case "paid":
         return "green";
-      case "Pending":
+      case "pending":
         return "yellow";
-      case "Refunded":
+      case "overdue":
+        return "red";
+      case "cancelled":
         return "red";
       default:
         return "gray";
@@ -69,14 +72,14 @@ function InvoicesTableRow(props) {
       {/* Invoice # */}
       <Td width="15%" px="16px" py="12px">
         <Text fontSize="sm" color={textColor} fontWeight="600">
-          {invoice.id}
+          {invoice.invoice_number}
         </Text>
       </Td>
 
       {/* Date */}
       <Td width="12%" px="16px" py="12px">
         <Text fontSize="sm" color={textColor} fontWeight="500">
-          {invoice.date}
+          {new Date(invoice.created_at).toLocaleDateString()}
         </Text>
       </Td>
 
@@ -84,11 +87,11 @@ function InvoicesTableRow(props) {
       <Td width="20%" px="16px" py="12px">
         <VStack align="start" spacing={0}>
           <Text fontSize="sm" color={textColor} fontWeight="600">
-            {invoice.customer.name}
+            {invoice.customer?.name || (invoice.customer_id ? `Customer #${invoice.customer_id}` : 'Guest')}
           </Text>
-          {invoice.customer.phone && (
+          {invoice.customer?.email && (
             <Text fontSize="xs" color={useColorModeValue("gray.600", "gray.300")}>
-              {invoice.customer.phone}
+              {invoice.customer.email}
             </Text>
           )}
         </VStack>
@@ -97,28 +100,28 @@ function InvoicesTableRow(props) {
       {/* Total */}
       <Td width="15%" px="16px" py="12px">
         <Text fontSize="sm" color={textColor} fontWeight="bold">
-          PKR {invoice.total.toLocaleString()}
+          PKR {parseFloat(invoice.total_amount || 0).toLocaleString()}
         </Text>
       </Td>
 
       {/* Payment Type */}
       <Td width="12%" px="16px" py="12px">
         <Text fontSize="sm" color={textColor} fontWeight="500">
-          {invoice.paymentType}
+          {invoice.payment_method_display || invoice.payment_method}
         </Text>
       </Td>
 
       {/* Status */}
       <Td width="12%" px="16px" py="12px">
         <Badge
-          colorScheme={getStatusColor(invoice.status)}
+          colorScheme={getStatusColor(invoice.payment_status)}
           variant="subtle"
           fontSize="xs"
           px={2}
           py={1}
           borderRadius="full"
         >
-          {invoice.status}
+          {invoice.payment_status_display || invoice.payment_status}
         </Badge>
       </Td>
 
@@ -183,7 +186,20 @@ function InvoicesTableRow(props) {
             >
               Print
             </MenuItem>
-            {invoice.customer.email && (
+            <MenuItem
+              icon={<DownloadIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              _hover={{
+                bg: "purple.50"
+              }}
+              borderRadius={0}
+            >
+              Download
+            </MenuItem>
+            {invoice.customer?.email && (
               <MenuItem
                 icon={<EmailIcon />}
                 onClick={(e) => {
