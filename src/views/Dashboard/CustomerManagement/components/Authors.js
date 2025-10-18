@@ -567,7 +567,7 @@ const Authors = ({ title, captions, data }) => {
             }}
           />
           <Portal>
-            <MenuList zIndex={1400} borderRadius="lg" overflow="hidden" data-menu="true">
+            <MenuList zIndex={9999} borderRadius="lg" overflow="hidden" data-menu="true" boxShadow="0 10px 25px rgba(0, 0, 0, 0.15)">
               <MenuItem 
                 onClick={() => console.log("Edit customer:", customer.name)}
                 borderRadius={0}
@@ -677,7 +677,7 @@ const Authors = ({ title, captions, data }) => {
   ];
 
   return (
-    <Card overflowX={{ sm: "scroll", xl: "hidden" }}>
+    <Card overflowX={{ sm: "scroll", xl: "hidden" }} position="relative" zIndex={1}>
       <CardHeader p='6px 0px 22px 0px'>
         <Flex 
           justifyContent={{ base: "flex-start", md: "space-between" }} 
@@ -762,7 +762,7 @@ const Authors = ({ title, captions, data }) => {
           </Flex>
         </Flex>
       </CardHeader>
-      <CardBody>
+      <CardBody overflow="visible">
         {loading ? (
           <AppLoader message="Loading customers..." fullHeight />
         ) : stockData.length === 0 ? (
@@ -1083,14 +1083,14 @@ const Authors = ({ title, captions, data }) => {
           </VStack>
         ) : (
           // Desktop Table View
-           <Table 
-             variant='simple' 
-             color={textColor} 
-             size="md"
-             border="1px solid"
-             borderColor={borderColor}
-             borderRadius="12px"
-             overflow="hidden"
+          <Table 
+            variant='simple' 
+            color={textColor}
+            size="md"
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="12px"
+            overflow="visible"
              boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
            >
              <Thead>

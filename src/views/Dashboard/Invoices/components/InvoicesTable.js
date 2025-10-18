@@ -260,7 +260,7 @@ const InvoicesTable = () => {
   }
 
   return (
-    <Card overflowX={{ sm: "scroll", xl: "hidden" }}>
+    <Card overflowX={{ sm: "scroll", xl: "hidden" }} position="relative" zIndex={1}>
       <CardHeader p='6px 0px 22px 0px'>
         <Flex 
           justifyContent={{ base: "flex-start", md: "space-between" }} 
@@ -339,8 +339,10 @@ const InvoicesTable = () => {
               variant={showGuestOnly ? "solid" : "outline"}
               colorScheme={showGuestOnly ? "orange" : "gray"}
               onClick={() => setShowGuestOnly(!showGuestOnly)}
-              px={3}
+              px={4}
+              minW="100px"
               fontSize="sm"
+              whiteSpace="nowrap"
             >
               {showGuestOnly ? "Show All" : "Guest Only"}
             </Button>
@@ -353,8 +355,10 @@ const InvoicesTable = () => {
                 colorScheme="brand"
                 size="sm"
                 leftIcon={<HamburgerIcon />}
-                px={3}
+                px={4}
+                minW="100px"
                 fontSize="sm"
+                whiteSpace="nowrap"
               >
                 Actions
               </MenuButton>
@@ -371,7 +375,7 @@ const InvoicesTable = () => {
         </Flex>
       </CardHeader>
       
-      <CardBody>
+      <CardBody overflow="visible">
         {/* Show empty state if no invoices */}
         {getFilteredInvoices().length === 0 ? (
           <EmptyState
@@ -535,7 +539,7 @@ const InvoicesTable = () => {
             border="1px solid"
             borderColor={borderColor}
             borderRadius="12px"
-            overflow="hidden"
+            overflow="visible"
             boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
           >
             <Thead>

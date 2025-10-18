@@ -333,7 +333,17 @@ const StaffTable = () => {
 
             {/* Actions Menu */}
             <Menu>
-              <MenuButton as={Button} variant="outline" colorScheme="brand" size="sm" leftIcon={<HamburgerIcon />} px={3} fontSize="sm">
+              <MenuButton 
+                as={Button} 
+                variant="outline" 
+                colorScheme="brand" 
+                size="sm" 
+                leftIcon={<HamburgerIcon />} 
+                px={4} 
+                minW="100px"
+                fontSize="sm"
+                whiteSpace="nowrap"
+              >
                 Actions
               </MenuButton>
               <MenuList>
