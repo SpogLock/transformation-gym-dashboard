@@ -660,22 +660,31 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
 
                   <FormControl flex="1">
                     <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">
-                      Monthly Fee (₨) - Auto-calculated
+                      Monthly Fee (₨)
                     </FormLabel>
-                    <Input
-                      value={formData.monthlyFee || "₨0"}
-                      readOnly
-                      bg="gray.100"
-                      borderRadius="12px"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      _focus={{
-                        borderColor: "brand.500",
-                        boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
-                      }}
-                    />
+                    <NumberInput
+                      value={formData.monthlyFee ? formData.monthlyFee.replace(/[^0-9]/g, '') : ''}
+                      onChange={(value) => handleInputChange("monthlyFee", value ? `₨${Number(value).toLocaleString()}` : '')}
+                      min={0}
+                      precision={0}
+                    >
+                      <NumberInputField
+                        placeholder="Enter monthly fee"
+                        borderRadius="12px"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        _focus={{
+                          borderColor: "brand.500",
+                          boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
+                        }}
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
                     <Text fontSize="xs" color="gray.500" mt={1}>
-                      Fee is automatically set based on selected plan
+                      Auto-filled based on selected plan, but can be manually adjusted
                     </Text>
                   </FormControl>
                 </HStack>
@@ -694,22 +703,31 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                 <HStack spacing={4} w="100%">
                   <FormControl isRequired flex="1">
                     <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">
-                      Registration Fee (₨) - Auto-calculated
+                      Registration Fee (₨)
                     </FormLabel>
-                    <Input
-                      value={formData.registrationFee || "₨0"}
-                      readOnly
-                      bg="gray.100"
-                      borderRadius="12px"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      _focus={{
-                        borderColor: "brand.500",
-                        boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
-                      }}
-                    />
+                    <NumberInput
+                      value={formData.registrationFee ? formData.registrationFee.replace(/[^0-9]/g, '') : ''}
+                      onChange={(value) => handleInputChange("registrationFee", value ? `₨${Number(value).toLocaleString()}` : '')}
+                      min={0}
+                      precision={0}
+                    >
+                      <NumberInputField
+                        placeholder="Enter registration fee"
+                        borderRadius="12px"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        _focus={{
+                          borderColor: "brand.500",
+                          boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
+                        }}
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
                     <Text fontSize="xs" color="gray.500" mt={1}>
-                      Fee is automatically set based on selected plan
+                      Auto-filled based on selected plan, but can be manually adjusted
                     </Text>
                   </FormControl>
                   

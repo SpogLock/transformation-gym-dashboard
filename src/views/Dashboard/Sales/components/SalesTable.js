@@ -188,6 +188,15 @@ const SalesTable = () => {
     }
   };
 
+  // Update cart item custom price
+  const updateCartPrice = (productId, customPrice) => {
+    setCart(cart.map(item => 
+      item.id === productId 
+        ? { ...item, customPrice: customPrice ? parseFloat(customPrice) : null }
+        : item
+    ));
+  };
+
   // Remove item from cart
   const removeFromCart = (productId) => {
     setCart(cart.filter(item => item.id !== productId));
@@ -203,10 +212,9 @@ const SalesTable = () => {
   };
 
   // Calculate totals
-  const subtotal = cart.reduce((sum, item) => sum + (item.sellingPrice * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + ((item.customPrice || item.sellingPrice) * item.quantity), 0);
   const discountAmount = (subtotal * discount) / 100;
-  const tax = (subtotal - discountAmount) * 0.15; // 15% tax
-  const total = subtotal - discountAmount + tax;
+  const total = subtotal - discountAmount;
 
   // Handle checkout
   const handleCheckout = async () => {
@@ -238,7 +246,7 @@ const SalesTable = () => {
       const cartItems = cart.map(item => ({
         productId: item.productId,
         name: item.name,
-        price: item.price,
+        price: item.customPrice || item.price,
         quantity: item.quantity,
         stock: item.stock
       }));
@@ -249,7 +257,7 @@ const SalesTable = () => {
         selectedCustomer?.id || null,
         paymentMethod.toLowerCase().replace(' ', '_'),
         discountAmount,
-        tax,
+        0, // No tax
         `POS sale - ${selectedCustomer ? selectedCustomer.name : 'Guest'}`
       );
 
@@ -550,8 +558,46 @@ const SalesTable = () => {
                               </HStack>
                               
                               <Text fontSize="sm" fontWeight="bold" color="brand.500">
-                                PKR {(item.sellingPrice * item.quantity).toLocaleString()}
+                                PKR {((item.customPrice || item.sellingPrice) * item.quantity).toLocaleString()}
                               </Text>
+                            </HStack>
+                            
+                            {/* Custom Price Input */}
+                            <HStack spacing={2} align="center">
+                              <Text fontSize="xs" color={cardLabelColor} minW="60px">
+                                Custom Price:
+                              </Text>
+                              <NumberInput
+                                size="sm"
+                                value={item.customPrice || ''}
+                                onChange={(value) => updateCartPrice(item.id, value)}
+                                min={0}
+                                precision={0}
+                                flex="1"
+                              >
+                                <NumberInputField
+                                  placeholder="Enter custom price"
+                                  fontSize="xs"
+                                  bg={useColorModeValue("gray.50", "gray.700")}
+                                  border="1px solid"
+                                  borderColor="gray.300"
+                                  borderRadius="md"
+                                />
+                                <NumberInputStepper>
+                                  <NumberIncrementStepper />
+                                  <NumberDecrementStepper />
+                                </NumberInputStepper>
+                              </NumberInput>
+                              {item.customPrice && (
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  colorScheme="red"
+                                  icon={<DeleteIcon />}
+                                  onClick={() => updateCartPrice(item.id, null)}
+                                  title="Reset to original price"
+                                />
+                              )}
                             </HStack>
                           </VStack>
                         </Box>
@@ -694,10 +740,6 @@ const SalesTable = () => {
                       <Text fontSize="sm" fontWeight="semibold" color="red.500">
                         -PKR {discountAmount.toLocaleString()}
                       </Text>
-                    </HStack>
-                    <HStack justify="space-between">
-                      <Text fontSize="sm" color={cardLabelColor}>Tax (15%):</Text>
-                      <Text fontSize="sm" fontWeight="semibold">PKR {tax.toLocaleString()}</Text>
                     </HStack>
                     <Divider />
                     <HStack justify="space-between">
