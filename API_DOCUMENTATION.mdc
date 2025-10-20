@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api
+http://127.0.0.1:8000/api
 ```
 
 ## Authentication
@@ -79,7 +79,7 @@ Creates a new user account.
 #### Frontend Integration Example
 ```javascript
 const registerUser = async (userData) => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/register', {
+  const response = await fetch('http://127.0.0.1:8000/api/register', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ Authenticates a user and returns an access token.
 #### Frontend Integration Example
 ```javascript
 const loginUser = async (credentials) => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/login', {
+  const response = await fetch('http://127.0.0.1:8000/api/login', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ Authorization: Bearer {token}
 const logoutUser = async () => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/logout', {
+  const response = await fetch('http://127.0.0.1:8000/api/logout', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -244,7 +244,7 @@ Authorization: Bearer {token}
 const getUserProfile = async () => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/profile', {
+  const response = await fetch('http://127.0.0.1:8000/api/profile', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -307,7 +307,7 @@ Authorization: Bearer {token}
 const updateUserProfile = async (profileData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/profile', {
+  const response = await fetch('http://127.0.0.1:8000/api/profile', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -363,7 +363,7 @@ Authorization: Bearer {token}
 const changePassword = async (passwordData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/change-password', {
+  const response = await fetch('http://127.0.0.1:8000/api/change-password', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -580,7 +580,7 @@ const checkTokenExpiry = () => {
   
   // You can decode the JWT token to check expiry
   // Or make a test API call to see if token is still valid
-  fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/user', {
+  fetch('http://127.0.0.1:8000/api/user', {
     headers: { 'Authorization': `Bearer ${token}` }
   })
   .then(response => {
@@ -699,7 +699,7 @@ const getCustomers = async (filters = {}) => {
   const token = localStorage.getItem('auth_token');
   const queryParams = new URLSearchParams(filters);
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -781,7 +781,7 @@ Authorization: Bearer {token}
 const createCustomer = async (customerData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers', {
+  const response = await fetch('http://127.0.0.1:8000/api/customers', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -830,7 +830,7 @@ Authorization: Bearer {token}
 const getCustomer = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -888,7 +888,7 @@ Authorization: Bearer {token}
 const updateCustomer = async (customerId, updateData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -933,7 +933,7 @@ Authorization: Bearer {token}
 const deleteCustomer = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -987,7 +987,7 @@ Authorization: Bearer {token}
 const getCustomerStatistics = async () => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers-statistics', {
+  const response = await fetch('http://127.0.0.1:8000/api/customers-statistics', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1035,7 +1035,7 @@ Authorization: Bearer {token}
 const markCustomerAsPaid = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/mark-as-paid`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/mark-as-paid`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1083,7 +1083,7 @@ Authorization: Bearer {token}
 const sendPaymentReminder = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/send-reminder`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/send-reminder`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1250,7 +1250,7 @@ const uploadCustomerProfilePicture = async (customerId, imageFile) => {
   const formData = new FormData();
   formData.append('profile_picture', imageFile);
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/upload-profile-picture`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/upload-profile-picture`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1312,7 +1312,7 @@ Authorization: Bearer {token}
 const deleteCustomerProfilePicture = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/delete-profile-picture`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/delete-profile-picture`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1367,7 +1367,7 @@ Authorization: Bearer {token}
 const getCustomerProfilePicture = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/profile-picture`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/profile-picture`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1599,13 +1599,13 @@ Authorization: Bearer {token}
         "updated_at": "2025-10-17T10:30:00.000000Z"
       }
     ],
-    "first_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans?page=1",
+    "first_page_url": "http://127.0.0.1:8000/api/plans?page=1",
     "from": 1,
     "last_page": 1,
-    "last_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans?page=1",
+    "last_page_url": "http://127.0.0.1:8000/api/plans?page=1",
     "links": [],
     "next_page_url": null,
-    "path": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans",
+    "path": "http://127.0.0.1:8000/api/plans",
     "per_page": 15,
     "prev_page_url": null,
     "to": 1,
@@ -1755,7 +1755,7 @@ Authorization: Bearer {token}
 const getPlans = async (filters = {}) => {
   const token = localStorage.getItem('auth_token');
   const query = new URLSearchParams(filters);
-  const res = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans?${query}`, {
+  const res = await fetch(`http://127.0.0.1:8000/api/plans?${query}`, {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
   });
   const data = await res.json();
@@ -1766,7 +1766,7 @@ const getPlans = async (filters = {}) => {
 // Create plan
 const createPlan = async (payload) => {
   const token = localStorage.getItem('auth_token');
-  const res = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans', {
+  const res = await fetch('http://127.0.0.1:8000/api/plans', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify(payload)
@@ -1779,7 +1779,7 @@ const createPlan = async (payload) => {
 // Update plan
 const updatePlan = async (id, payload) => {
   const token = localStorage.getItem('auth_token');
-  const res = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans/${id}`, {
+  const res = await fetch(`http://127.0.0.1:8000/api/plans/${id}`, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify(payload)
@@ -1792,7 +1792,7 @@ const updatePlan = async (id, payload) => {
 // Delete plan
 const deletePlan = async (id) => {
   const token = localStorage.getItem('auth_token');
-  const res = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/plans/${id}`, {
+  const res = await fetch(`http://127.0.0.1:8000/api/plans/${id}`, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
   });
@@ -1853,7 +1853,7 @@ Authorization: Bearer {token}
 const getCustomerPlan = async (customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/plan`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/plan`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -1936,7 +1936,7 @@ Content-Type: application/json
 const updateCustomerPlan = async (customerId, planId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/${customerId}/plan`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers/${customerId}/plan`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -2359,13 +2359,13 @@ Authorization: Bearer {token}
           "created_at": "2025-10-17T18:30:00.000000Z"
         }
       ],
-      "first_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/1/fee-history?page=1",
+      "first_page_url": "http://127.0.0.1:8000/api/customers/1/fee-history?page=1",
       "from": 1,
       "last_page": 1,
-      "last_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/1/fee-history?page=1",
+      "last_page_url": "http://127.0.0.1:8000/api/customers/1/fee-history?page=1",
       "links": [],
       "next_page_url": null,
-      "path": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers/1/fee-history",
+      "path": "http://127.0.0.1:8000/api/customers/1/fee-history",
       "per_page": 15,
       "prev_page_url": null,
       "to": 1,
@@ -2706,13 +2706,13 @@ Authorization: Bearer {token}
         "updated_at": "2025-10-17T10:30:00.000000Z"
       }
     ],
-    "first_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products?page=1",
+    "first_page_url": "http://127.0.0.1:8000/api/products?page=1",
     "from": 1,
     "last_page": 1,
-    "last_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products?page=1",
+    "last_page_url": "http://127.0.0.1:8000/api/products?page=1",
     "links": [],
     "next_page_url": null,
-    "path": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products",
+    "path": "http://127.0.0.1:8000/api/products",
     "per_page": 15,
     "prev_page_url": null,
     "to": 1,
@@ -2727,7 +2727,7 @@ const getProducts = async (filters = {}) => {
   const token = localStorage.getItem('auth_token');
   const queryParams = new URLSearchParams(filters);
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -2837,7 +2837,7 @@ Content-Type: application/json
 const createProduct = async (productData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products', {
+  const response = await fetch('http://127.0.0.1:8000/api/products', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -2918,7 +2918,7 @@ Authorization: Bearer {token}
 const getProduct = async (productId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products/${productId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -2985,7 +2985,7 @@ Content-Type: application/json
 const updateProduct = async (productId, updateData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products/${productId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3030,7 +3030,7 @@ Authorization: Bearer {token}
 const deleteProduct = async (productId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products/${productId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3089,7 +3089,7 @@ Content-Type: application/json
 const restockProduct = async (productId, quantity) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products/${productId}/restock`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}/restock`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3151,7 +3151,7 @@ Authorization: Bearer {token}
 const getProductStatistics = async () => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products/statistics', {
+  const response = await fetch('http://127.0.0.1:8000/api/products/statistics', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3717,7 +3717,7 @@ const processPOSSale = async (cartItems, customerId, paymentMethod, discount = 0
     notes: `POS sale - ${customerId ? 'Customer purchase' : 'Guest sale'}`
   };
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3797,7 +3797,7 @@ Authorization: Bearer {token}
 const searchCustomers = async (searchTerm) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers?search=${searchTerm}&per_page=10`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/customers?search=${searchTerm}&per_page=10`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -3879,7 +3879,7 @@ const getProductsForPOS = async (searchTerm = '') => {
     per_page: '50'
   });
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/products?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/products?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4477,13 +4477,13 @@ Authorization: Bearer {token}
         "updated_at": "2025-10-18T10:30:00.000000Z"
       }
     ],
-    "first_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices?page=1",
+    "first_page_url": "http://127.0.0.1:8000/api/invoices?page=1",
     "from": 1,
     "last_page": 1,
-    "last_page_url": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices?page=1",
+    "last_page_url": "http://127.0.0.1:8000/api/invoices?page=1",
     "links": [],
     "next_page_url": null,
-    "path": "https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices",
+    "path": "http://127.0.0.1:8000/api/invoices",
     "per_page": 15,
     "prev_page_url": null,
     "to": 1,
@@ -4498,7 +4498,7 @@ const getInvoices = async (filters = {}) => {
   const token = localStorage.getItem('auth_token');
   const queryParams = new URLSearchParams(filters);
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4591,7 +4591,7 @@ Content-Type: application/json
 const updateInvoice = async (invoiceId, updateData) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices/${invoiceId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4645,7 +4645,7 @@ const deleteInvoice = async (invoiceId) => {
   const confirmed = confirm('Are you sure you want to delete this invoice? This action will restore product stock and cannot be undone.');
   if (!confirmed) return;
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices/${invoiceId}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4738,7 +4738,7 @@ const getInvoicesByCustomerName = async (customerName, filters = {}) => {
     ...filters
   });
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-by-customer?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices-by-customer?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4809,7 +4809,7 @@ const bulkUpdateInvoiceStatus = async (invoiceIds, paymentStatus, paymentMethod 
     requestData.payment_method = paymentMethod;
   }
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-bulk-update-status', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-update-status', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -4873,7 +4873,7 @@ Authorization: Bearer {token}
 const getInvoiceStatistics = async () => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-statistics', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-statistics', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5236,7 +5236,7 @@ Content-Type: application/json
 const linkInvoiceToCustomer = async (invoiceId, customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices/${invoiceId}/link-customer`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}/link-customer`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5316,7 +5316,7 @@ const getGuestInvoices = async (filters = {}) => {
   const token = localStorage.getItem('auth_token');
   const queryParams = new URLSearchParams(filters);
   
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-guest?${queryParams}`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices-guest?${queryParams}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5373,7 +5373,7 @@ Content-Type: application/json
 const bulkLinkInvoicesToCustomer = async (invoiceIds, customerId) => {
   const token = localStorage.getItem('auth_token');
   
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-bulk-link-customer', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-link-customer', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5412,7 +5412,7 @@ Your invoices are showing as "Guest" because they have `customer_id: null` in th
 ```javascript
 // Get statistics to see how many guest invoices you have
 const getStats = async () => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-statistics', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-statistics', {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const data = await response.json();
@@ -5425,7 +5425,7 @@ const getStats = async () => {
 ```javascript
 // Get all invoices that need to be linked to customers
 const getGuestInvoices = async () => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-guest', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-guest', {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const data = await response.json();
@@ -5437,7 +5437,7 @@ const getGuestInvoices = async () => {
 ```javascript
 // Link individual invoice
 const linkInvoice = async (invoiceId, customerId) => {
-  const response = await fetch(`https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices/${invoiceId}/link-customer`, {
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices/${invoiceId}/link-customer`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5450,7 +5450,7 @@ const linkInvoice = async (invoiceId, customerId) => {
 
 // Bulk link multiple invoices
 const bulkLinkInvoices = async (invoiceIds, customerId) => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices-bulk-link-customer', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-bulk-link-customer', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -5489,7 +5489,7 @@ const InvoiceCustomerManager = () => {
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/customers', {
+      const response = await fetch('http://127.0.0.1:8000/api/customers', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -5571,7 +5571,7 @@ const InvoiceCustomerManager = () => {
 ```javascript
 // When creating invoices from POS, always include customer_id
 const createInvoice = async (invoiceData) => {
-  const response = await fetch('https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api/invoices', {
+  const response = await fetch('http://127.0.0.1:8000/api/invoices', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -6782,6 +6782,777 @@ const BulkStaffActions = ({ selectedStaff, onUpdate }) => {
 - [x] Role distribution
 - [x] Status summaries
 - [x] Recent activity tracking
+
+---
+
+## Sales Tracking by Staff
+
+Complete sales tracking system that automatically records which staff member (admin or staff) processed each transaction and invoice.
+
+### 63. Get Sales Statistics by Staff (Transactions)
+**GET** `/transactions-sales-by-staff`
+
+Retrieves sales statistics grouped by staff member for all transactions.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "sales_by_staff": [
+      {
+        "staff_id": 1,
+        "staff_name": "Alice Johnson",
+        "staff_email": "alice@example.com",
+        "transaction_count": 25,
+        "total_revenue": 125000.00
+      },
+      {
+        "staff_id": 2,
+        "staff_name": "Bob Lee",
+        "staff_email": "bob@example.com",
+        "transaction_count": 18,
+        "total_revenue": 89000.00
+      }
+    ]
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getSalesByStaff = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/transactions-sales-by-staff', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.sales_by_staff;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 64. Get Sales Statistics by Staff (Invoices)
+**GET** `/invoices-sales-by-staff`
+
+Retrieves sales statistics grouped by staff member for all invoices.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "sales_by_staff": [
+      {
+        "staff_id": 1,
+        "staff_name": "Alice Johnson",
+        "staff_email": "alice@example.com",
+        "invoice_count": 12,
+        "total_revenue": 125000.00
+      },
+      {
+        "staff_id": 2,
+        "staff_name": "Bob Lee",
+        "staff_email": "bob@example.com",
+        "invoice_count": 8,
+        "total_revenue": 89000.00
+      }
+    ]
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getInvoiceSalesByStaff = async () => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch('http://127.0.0.1:8000/api/invoices-sales-by-staff', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data.sales_by_staff;
+  } else {
+    throw new Error(data.message);
+  }
+};
+```
+
+---
+
+### 65. Get Transactions by Specific Staff Member
+**GET** `/transactions-staff/{staffId}`
+
+Retrieves all transactions processed by a specific staff member.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `transaction_type` (optional): Filter by transaction type (`sale`, `return`, `refund`)
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "staff": {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "role": "admin",
+      "role_display": "Admin"
+    },
+    "transactions": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 1,
+          "customer_id": 5,
+          "staff_id": 1,
+          "product_id": 3,
+          "invoice_id": 10,
+          "quantity": 2,
+          "unit_price": "5500.00",
+          "total_amount": "11000.00",
+          "transaction_type": "sale",
+          "payment_method": "cash",
+          "created_at": "2025-10-20T10:30:00.000000Z",
+          "customer": {
+            "id": 5,
+            "name": "John Doe",
+            "email": "john@example.com"
+          },
+          "product": {
+            "id": 3,
+            "name": "Protein Powder",
+            "selling_price": "5500.00"
+          },
+          "staff": {
+            "id": 1,
+            "name": "Alice Johnson",
+            "email": "alice@example.com"
+          }
+        }
+      ],
+      "total": 25
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getTransactionsByStaff = async (staffId, filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/transactions-staff/${staffId}?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage examples:
+// getTransactionsByStaff(1, { transaction_type: 'sale', date_from: '2025-10-01' })
+// getTransactionsByStaff(2, { date_to: '2025-10-20' })
+```
+
+---
+
+### 66. Get Invoices by Specific Staff Member
+**GET** `/invoices-staff/{staffId}`
+
+Retrieves all invoices created by a specific staff member.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `payment_status` (optional): Filter by payment status (`pending`, `paid`, `overdue`, `cancelled`)
+- `date_from` (optional): Filter from date (YYYY-MM-DD)
+- `date_to` (optional): Filter to date (YYYY-MM-DD)
+- `sort_by` (optional): Sort field (default: `created_at`)
+- `sort_order` (optional): Sort direction (`asc`, `desc` - default: `desc`)
+- `per_page` (optional): Items per page (default: `15`)
+
+#### Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "staff": {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "role": "admin",
+      "role_display": "Admin"
+    },
+    "invoices": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 10,
+          "customer_id": 5,
+          "staff_id": 1,
+          "invoice_number": "INV-2025-0010",
+          "subtotal": "11000.00",
+          "tax_amount": "1100.00",
+          "discount_amount": "500.00",
+          "total_amount": "11600.00",
+          "payment_status": "paid",
+          "payment_method": "cash",
+          "created_at": "2025-10-20T10:30:00.000000Z",
+          "customer": {
+            "id": 5,
+            "name": "John Doe",
+            "email": "john@example.com"
+          },
+          "staff": {
+            "id": 1,
+            "name": "Alice Johnson",
+            "email": "alice@example.com"
+          },
+          "transactions": [
+            {
+              "id": 1,
+              "product_id": 3,
+              "quantity": 2,
+              "unit_price": "5500.00",
+              "total_amount": "11000.00",
+              "product": {
+                "id": 3,
+                "name": "Protein Powder",
+                "selling_price": "5500.00"
+              },
+              "staff": {
+                "id": 1,
+                "name": "Alice Johnson",
+                "email": "alice@example.com"
+              }
+            }
+          ]
+        }
+      ],
+      "total": 12
+    }
+  }
+}
+```
+
+#### Frontend Integration Example
+```javascript
+const getInvoicesByStaff = async (staffId, filters = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryParams = new URLSearchParams(filters);
+  
+  const response = await fetch(`http://127.0.0.1:8000/api/invoices-staff/${staffId}?${queryParams}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    return data.data;
+  } else {
+    throw new Error(data.message);
+  }
+};
+
+// Usage examples:
+// getInvoicesByStaff(1, { payment_status: 'paid', date_from: '2025-10-01' })
+// getInvoicesByStaff(2, { date_to: '2025-10-20' })
+```
+
+---
+
+## Staff Sales Tracking Features
+
+### Automatic Staff Tracking
+- **Automatic Recording**: Every transaction and invoice automatically records the authenticated user's ID as `staff_id`
+- **No Manual Input**: Staff ID is automatically captured from the authenticated session
+- **Real-time Tracking**: All sales are immediately tracked to the correct staff member
+
+### Sales Analytics
+- **Individual Performance**: Track sales performance by each staff member
+- **Revenue Attribution**: Know exactly which staff member generated each sale
+- **Transaction History**: Complete history of all transactions processed by each staff member
+- **Invoice History**: Complete history of all invoices created by each staff member
+
+### Filtering and Reporting
+- **Date Range Filtering**: Filter sales by specific date ranges
+- **Transaction Type Filtering**: Filter by sale, return, or refund transactions
+- **Payment Status Filtering**: Filter invoices by payment status
+- **Staff Performance Comparison**: Compare performance between different staff members
+
+### Data Relationships
+- **Transaction → Staff**: Each transaction is linked to the staff member who processed it
+- **Invoice → Staff**: Each invoice is linked to the staff member who created it
+- **Staff → Transactions**: Each staff member has many transactions they processed
+- **Staff → Invoices**: Each staff member has many invoices they created
+
+---
+
+## Staff Sales Tracking Frontend Integration Examples
+
+### 1. Sales Dashboard by Staff
+```javascript
+const StaffSalesDashboard = () => {
+  const [salesData, setSalesData] = useState([]);
+  const [invoiceData, setInvoiceData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSalesData();
+  }, []);
+
+  const loadSalesData = async () => {
+    try {
+      const [transactionSales, invoiceSales] = await Promise.all([
+        getSalesByStaff(),
+        getInvoiceSalesByStaff()
+      ]);
+      
+      setSalesData(transactionSales);
+      setInvoiceData(invoiceSales);
+    } catch (error) {
+      console.error('Error loading sales data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTotalRevenue = (data) => {
+    return data.reduce((total, item) => total + item.total_revenue, 0);
+  };
+
+  const getTotalTransactions = (data) => {
+    return data.reduce((total, item) => total + item.transaction_count, 0);
+  };
+
+  const getTotalInvoices = (data) => {
+    return data.reduce((total, item) => total + item.invoice_count, 0);
+  };
+
+  if (loading) return <div>Loading sales data...</div>;
+
+  return (
+    <div className="staff-sales-dashboard">
+      <h2>Staff Sales Performance</h2>
+      
+      {/* Summary Cards */}
+      <div className="summary-cards grid grid-cols-4 gap-4 mb-6">
+        <div className="card">
+          <h3>Total Revenue</h3>
+          <p className="text-2xl font-bold">₦{getTotalRevenue(salesData).toLocaleString()}</p>
+        </div>
+        <div className="card">
+          <h3>Total Transactions</h3>
+          <p className="text-2xl font-bold">{getTotalTransactions(salesData)}</p>
+        </div>
+        <div className="card">
+          <h3>Total Invoices</h3>
+          <p className="text-2xl font-bold">{getTotalInvoices(invoiceData)}</p>
+        </div>
+        <div className="card">
+          <h3>Active Staff</h3>
+          <p className="text-2xl font-bold">{salesData.length}</p>
+        </div>
+      </div>
+
+      {/* Staff Performance Table */}
+      <div className="staff-performance-table">
+        <h3>Individual Performance</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Staff Member</th>
+              <th>Email</th>
+              <th>Transactions</th>
+              <th>Invoices</th>
+              <th>Revenue</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {salesData.map(staff => {
+              const invoiceStaff = invoiceData.find(i => i.staff_id === staff.staff_id);
+              return (
+                <tr key={staff.staff_id}>
+                  <td>
+                    <div>
+                      <div className="font-semibold">{staff.staff_name}</div>
+                      {staff.staff_id && <span className="text-sm text-gray-500">ID: {staff.staff_id}</span>}
+                    </div>
+                  </td>
+                  <td>{staff.staff_email || 'N/A'}</td>
+                  <td>
+                    <span className="badge badge-blue">
+                      {staff.transaction_count} transactions
+                    </span>
+                  </td>
+                  <td>
+                    <span className="badge badge-green">
+                      {invoiceStaff?.invoice_count || 0} invoices
+                    </span>
+                  </td>
+                  <td>
+                    <span className="font-bold text-green-600">
+                      ₦{staff.total_revenue.toLocaleString()}
+                    </span>
+                  </td>
+                  <td>
+                    <button onClick={() => viewStaffDetails(staff.staff_id)}>
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+### 2. Staff Transaction History Component
+```javascript
+const StaffTransactionHistory = ({ staffId }) => {
+  const [transactions, setTransactions] = useState([]);
+  const [staff, setStaff] = useState(null);
+  const [filters, setFilters] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [staffId, filters]);
+
+  const loadTransactions = async () => {
+    setLoading(true);
+    try {
+      const data = await getTransactionsByStaff(staffId, filters);
+      setTransactions(data.transactions.data);
+      setStaff(data.staff);
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const getTransactionTypeColor = (type) => {
+    switch(type) {
+      case 'sale': return 'text-green-600 bg-green-100';
+      case 'return': return 'text-red-600 bg-red-100';
+      case 'refund': return 'text-orange-600 bg-orange-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  if (loading) return <div>Loading transactions...</div>;
+
+  return (
+    <div className="staff-transaction-history">
+      {staff && (
+        <div className="staff-header mb-4">
+          <h3>Transaction History - {staff.name}</h3>
+          <p className="text-gray-600">{staff.email} ({staff.role_display})</p>
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <div className="filters mb-4 flex gap-4">
+        <select 
+          value={filters.transaction_type || ''}
+          onChange={(e) => handleFilterChange('transaction_type', e.target.value)}
+        >
+          <option value="">All Transaction Types</option>
+          <option value="sale">Sales</option>
+          <option value="return">Returns</option>
+          <option value="refund">Refunds</option>
+        </select>
+
+        <input
+          type="date"
+          value={filters.date_from || ''}
+          onChange={(e) => handleFilterChange('date_from', e.target.value)}
+          placeholder="From Date"
+        />
+
+        <input
+          type="date"
+          value={filters.date_to || ''}
+          onChange={(e) => handleFilterChange('date_to', e.target.value)}
+          placeholder="To Date"
+        />
+      </div>
+
+      {/* Transactions Table */}
+      <div className="transactions-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Product</th>
+              <th>Type</th>
+              <th>Quantity</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map(transaction => (
+              <tr key={transaction.id}>
+                <td>{new Date(transaction.created_at).toLocaleDateString()}</td>
+                <td>
+                  {transaction.customer ? transaction.customer.name : 'Guest'}
+                </td>
+                <td>{transaction.product.name}</td>
+                <td>
+                  <span className={`badge ${getTransactionTypeColor(transaction.transaction_type)}`}>
+                    {transaction.transaction_type_display}
+                  </span>
+                </td>
+                <td>{transaction.quantity}</td>
+                <td className="font-semibold">
+                  ₦{transaction.total_amount.toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+### 3. Staff Invoice History Component
+```javascript
+const StaffInvoiceHistory = ({ staffId }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [staff, setStaff] = useState(null);
+  const [filters, setFilters] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [staffId, filters]);
+
+  const loadInvoices = async () => {
+    setLoading(true);
+    try {
+      const data = await getInvoicesByStaff(staffId, filters);
+      setInvoices(data.invoices.data);
+      setStaff(data.staff);
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const getPaymentStatusColor = (status) => {
+    switch(status) {
+      case 'paid': return 'text-green-600 bg-green-100';
+      case 'pending': return 'text-yellow-600 bg-yellow-100';
+      case 'overdue': return 'text-red-600 bg-red-100';
+      case 'cancelled': return 'text-gray-600 bg-gray-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  if (loading) return <div>Loading invoices...</div>;
+
+  return (
+    <div className="staff-invoice-history">
+      {staff && (
+        <div className="staff-header mb-4">
+          <h3>Invoice History - {staff.name}</h3>
+          <p className="text-gray-600">{staff.email} ({staff.role_display})</p>
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <div className="filters mb-4 flex gap-4">
+        <select 
+          value={filters.payment_status || ''}
+          onChange={(e) => handleFilterChange('payment_status', e.target.value)}
+        >
+          <option value="">All Payment Status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+
+        <input
+          type="date"
+          value={filters.date_from || ''}
+          onChange={(e) => handleFilterChange('date_from', e.target.value)}
+          placeholder="From Date"
+        />
+
+        <input
+          type="date"
+          value={filters.date_to || ''}
+          onChange={(e) => handleFilterChange('date_to', e.target.value)}
+          placeholder="To Date"
+        />
+      </div>
+
+      {/* Invoices Table */}
+      <div className="invoices-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map(invoice => (
+              <tr key={invoice.id}>
+                <td className="font-mono">{invoice.invoice_number}</td>
+                <td>{new Date(invoice.created_at).toLocaleDateString()}</td>
+                <td>
+                  {invoice.customer ? invoice.customer.name : 'Guest'}
+                </td>
+                <td>
+                  <span className="badge badge-blue">
+                    {invoice.transactions.length} items
+                  </span>
+                </td>
+                <td className="font-semibold">
+                  ₦{invoice.total_amount.toLocaleString()}
+                </td>
+                <td>
+                  <span className={`badge ${getPaymentStatusColor(invoice.payment_status)}`}>
+                    {invoice.payment_status_display}
+                  </span>
+                </td>
+                <td>
+                  <button onClick={() => viewInvoice(invoice.id)}>
+                    View Invoice
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## Staff Sales Tracking Integration Checklist
+
+✅ **Automatic Staff Tracking**
+- [x] Transactions automatically record staff_id
+- [x] Invoices automatically record staff_id
+- [x] Staff ID captured from authenticated session
+- [x] No manual input required
+
+✅ **Sales Analytics**
+- [x] Individual staff performance tracking
+- [x] Revenue attribution by staff member
+- [x] Transaction history by staff member
+- [x] Invoice history by staff member
+
+✅ **Filtering and Reporting**
+- [x] Date range filtering
+- [x] Transaction type filtering
+- [x] Payment status filtering
+- [x] Staff performance comparison
+
+✅ **Data Relationships**
+- [x] Transaction → Staff relationship
+- [x] Invoice → Staff relationship
+- [x] Staff → Transactions relationship
+- [x] Staff → Invoices relationship
+
+✅ **API Endpoints**
+- [x] Sales statistics by staff (transactions)
+- [x] Sales statistics by staff (invoices)
+- [x] Transactions by staff member
+- [x] Invoices by staff member
 
 ---
 

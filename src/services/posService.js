@@ -92,7 +92,7 @@ export const searchProducts = async (searchTerm) => {
 };
 
 // Process POS sale with validation
-export const processPOSSale = async (cartItems, customerId, paymentMethod, discount = 0, tax = 0, notes = '') => {
+export const processPOSSale = async (cartItems, customerId, paymentMethod, discount = 0, tax = 0, notes = '', salespersonId = null) => {
   if (!cartItems || cartItems.length === 0) {
     throw new Error('Cart is empty');
   }
@@ -120,7 +120,9 @@ export const processPOSSale = async (cartItems, customerId, paymentMethod, disco
     tax_amount: parseFloat(tax),
     discount_amount: parseFloat(discount),
     payment_method: paymentMethod,
-    notes: notes || `POS sale - ${customerId ? 'Customer purchase' : 'Guest sale'}`
+    notes: notes || `POS sale - ${customerId ? 'Customer purchase' : 'Guest sale'}`,
+    // Optional: explicitly assign a salesperson different from the authenticated user
+    staff_id: salespersonId || undefined
   };
 
   return await createPOSSale(requestData);

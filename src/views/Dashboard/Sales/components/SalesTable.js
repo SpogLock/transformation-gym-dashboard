@@ -45,6 +45,7 @@ import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import whey_dummy from "assets/img/whey_dummy.png";
 import { getProductsForPOS, getCustomersForPOS, processPOSSale } from "services/posService";
+import { getAllStaff } from "services/staffService";
 import AppLoader from "components/Loaders/AppLoader";
 
 const SalesTable = () => {
@@ -72,10 +73,14 @@ const SalesTable = () => {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [salespersonId, setSalespersonId] = useState(null);
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
 
-  // Load products on component mount
+  // Load products and staff on component mount
   useEffect(() => {
     loadProducts();
+    loadStaff();
   }, []);
 
   // Load products from API
@@ -95,6 +100,19 @@ const SalesTable = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load staff list for salesperson selection
+  const loadStaff = async () => {
+    setStaffLoading(true);
+    try {
+      const staff = await getAllStaff({ status: 'active', per_page: 100, sort_by: 'name', sort_order: 'asc' });
+      setStaffList(Array.isArray(staff) ? staff : []);
+    } catch (error) {
+      setStaffList([]);
+    } finally {
+      setStaffLoading(false);
     }
   };
 
@@ -258,7 +276,8 @@ const SalesTable = () => {
         paymentMethod.toLowerCase().replace(' ', '_'),
         discountAmount,
         0, // No tax
-        `POS sale - ${selectedCustomer ? selectedCustomer.name : 'Guest'}`
+        `POS sale - ${selectedCustomer ? selectedCustomer.name : 'Guest'}`,
+        salespersonId || null
       );
 
       // Debug: Log the result to see the actual structure
@@ -725,6 +744,36 @@ const SalesTable = () => {
                         </Button>
                       ))}
                     </HStack>
+                  </VStack>
+
+                  {/* Salesperson Selection */}
+                  <VStack spacing={2} align="stretch">
+                    <Text fontSize="sm" fontWeight="semibold" color={textColor}>
+                      Salesperson
+                    </Text>
+                    {staffLoading ? (
+                      <Box>
+                        <AppLoader message="Loading staff..." />
+                      </Box>
+                    ) : (
+                      <Select
+                        placeholder="Auto (current user)"
+                        value={salespersonId || ''}
+                        onChange={(e) => setSalespersonId(e.target.value ? parseInt(e.target.value) : null)}
+                        bg={useColorModeValue("gray.50", "gray.700")}
+                        border="none"
+                        borderRadius="md"
+                      >
+                        {staffList.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.name} {staff.role ? `(${staff.role})` : ''}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    <Text fontSize="xs" color={cardLabelColor}>
+                      Leave empty to default to the logged-in user.
+                    </Text>
                   </VStack>
 
                   <Divider />
