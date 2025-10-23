@@ -1,0 +1,91 @@
+---
+alwaysApply: true
+---
+# Trainer Name Feature
+
+## Overview
+Added conditional validation to require `trainer_name` when `has_trainer` is set to `true` during customer creation and updates.
+
+## Changes Made
+
+### 1. Updated CustomerController Validation Rules
+
+**Store Method (`POST /api/customers`)**
+- Added `required_if:has_trainer,true` validation rule for `trainer_name` field
+- When `has_trainer` is `true`, `trainer_name` becomes required
+- When `has_trainer` is `false` or not provided, `trainer_name` remains optional
+
+**Update Method (`PUT /api/customers/{id}`)**
+- Applied the same conditional validation rule for updates
+- Ensures consistency between create and update operations
+
+### 2. Validation Rules
+```php
+'trainer_name' => ['nullable', 'string', 'max:255', 'required_if:has_trainer,true']
+```
+
+### 3. Test Coverage
+Created comprehensive tests in `tests/Feature/CustomerControllerTest.php`:
+
+- ✅ `trainer_name` is required when `has_trainer` is `true`
+- ✅ `trainer_name` is not required when `has_trainer` is `false`
+- ✅ Customer can be created with trainer when `trainer_name` is provided
+- ✅ `trainer_name` is required when updating `has_trainer` to `true`
+- ✅ Customer can be updated with trainer when `trainer_name` is provided
+
+## API Usage Examples
+
+### ✅ Valid Request (with trainer)
+```json
+POST /api/customers
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "has_trainer": true,
+    "trainer_name": "Trainer Sarah"
+}
+```
+
+### ✅ Valid Request (without trainer)
+```json
+POST /api/customers
+{
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "has_trainer": false
+}
+```
+
+### ❌ Invalid Request (missing trainer name)
+```json
+POST /api/customers
+{
+    "name": "Mike Smith",
+    "email": "mike@example.com",
+    "has_trainer": true
+    // trainer_name is missing - will return 422 validation error
+}
+```
+
+## Error Response
+When validation fails, the API returns:
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "errors": {
+        "trainer_name": ["The trainer name field is required when has trainer is true."]
+    }
+}
+```
+
+## Database Fields
+The feature uses existing database fields:
+- `has_trainer` (boolean) - indicates if customer has a trainer
+- `trainer_name` (string, nullable) - name of the trainer
+- `trainer_id` (integer, nullable) - ID reference to trainer (for future use)
+
+## Backward Compatibility
+- Existing customers without trainers are unaffected
+- The validation only applies when `has_trainer` is explicitly set to `true`
+- No database migrations were required as the fields already existed

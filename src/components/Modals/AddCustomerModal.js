@@ -46,6 +46,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     membershipStatus: "Active",
     memberType: "New",
     trainerRequired: "No",
+    trainerName: "",
     customerPlan: "",
     plan_id: null,
     customerWeight: "",
@@ -193,6 +194,19 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     // Debug: Log form data before submission
     console.log('📝 Form data before submission:', formData);
     
+    // Validate trainer name is required when trainer is required
+    if (formData.trainerRequired === "Yes" && (!formData.trainerName || formData.trainerName.trim() === "")) {
+      toast({
+        title: "Validation Error",
+        description: "Trainer name is required when trainer is required.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+        position: "top-right",
+      });
+      return;
+    }
+    
     // Generate a new ID for the customer and calculate next due date if not set
     const newCustomer = {
       ...formData,
@@ -228,6 +242,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
       membershipStatus: "Active",
       memberType: "New",
       trainerRequired: "No",
+      trainerName: "",
       customerPlan: "",
       plan_id: null,
       customerWeight: "",
@@ -628,6 +643,27 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                     </Select>
                   </FormControl>
                 </HStack>
+
+                {/* Trainer Name Field - Only show when trainer is required */}
+                {formData.trainerRequired === "Yes" && (
+                  <FormControl isRequired>
+                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">
+                      Trainer Name
+                    </FormLabel>
+                    <Input
+                      value={formData.trainerName}
+                      onChange={(e) => handleInputChange("trainerName", e.target.value)}
+                      placeholder="Enter trainer name"
+                      borderRadius="12px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _focus={{
+                        borderColor: "brand.500",
+                        boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
+                      }}
+                    />
+                  </FormControl>
+                )}
 
                 <HStack spacing={4} w="100%">
                   <FormControl isRequired flex="1">

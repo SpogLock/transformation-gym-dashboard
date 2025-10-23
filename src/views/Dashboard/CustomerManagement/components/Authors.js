@@ -224,6 +224,7 @@ const Authors = ({ title, captions, data }) => {
       monthly_fee: newCustomer.monthlyFee ? parseInt((newCustomer.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
       registration_fee: newCustomer.registrationFee ? parseInt((newCustomer.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
       has_trainer: newCustomer.trainerRequired === 'Yes',
+      trainer_name: newCustomer.trainerRequired === 'Yes' ? newCustomer.trainerName : undefined,
       // let backend compute payment dates when invoice is generated
       age: newCustomer.customerAge ? parseInt((newCustomer.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
       weight: newCustomer.customerWeight ? parseFloat((newCustomer.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
@@ -270,6 +271,7 @@ const Authors = ({ title, captions, data }) => {
         monthly_fee: formData.monthlyFee ? parseInt((formData.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
         registration_fee: formData.registrationFee ? parseInt((formData.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
         has_trainer: formData.trainerRequired === 'Yes',
+        trainer_name: formData.trainerRequired === 'Yes' ? formData.trainerName : undefined,
         age: formData.customerAge ? parseInt((formData.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
         weight: formData.customerWeight ? parseFloat((formData.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
       };

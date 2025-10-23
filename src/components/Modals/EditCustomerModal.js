@@ -45,6 +45,7 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
         membershipStatus: customer.membershipStatus || "Active",
         memberType: customer.memberType || "New",
         trainerRequired: customer.trainerRequired || "No",
+        trainerName: customer.trainerName || "",
         customerPlan: customer.customerPlan || "",
         plan_id: customer.planId ? String(customer.planId) : "", // Convert to string for select
         customerWeight: (customer.customerWeight || "").replace(" kg", ""),
@@ -108,6 +109,13 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
   };
 
   const submit = () => {
+    // Validate trainer name is required when trainer is required
+    if (formData.trainerRequired === "Yes" && (!formData.trainerName || formData.trainerName.trim() === "")) {
+      // You can add toast notification here if needed
+      console.error("Trainer name is required when trainer is required");
+      return;
+    }
+    
     if (onSave) {
       onSave(formData, selectedFile);
     }
@@ -238,6 +246,18 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
                   </Select>
                 </FormControl>
               </HStack>
+
+              {/* Trainer Name Field - Only show when trainer is required */}
+              {formData.trainerRequired === "Yes" && (
+                <FormControl isRequired>
+                  <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Trainer Name</FormLabel>
+                  <Input
+                    value={formData.trainerName}
+                    onChange={(e) => handleInputChange("trainerName", e.target.value)}
+                    placeholder="Enter trainer name"
+                  />
+                </FormControl>
+              )}
 
               <HStack spacing={4} w="100%">
                 <FormControl isRequired flex="1">
