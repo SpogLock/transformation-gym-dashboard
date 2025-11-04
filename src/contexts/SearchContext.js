@@ -17,6 +17,11 @@ export const SearchProvider = ({ children }) => {
     customerPlan: '',
     feeStatus: '',
     trainerRequired: '',
+    // New date filters
+    dateFrom: '', // YYYY-MM-DD
+    dateTo: '',   // YYYY-MM-DD
+    month: '',    // 1-12
+    year: '',     // YYYY
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -34,6 +39,10 @@ export const SearchProvider = ({ children }) => {
       customerPlan: '',
       feeStatus: '',
       trainerRequired: '',
+      dateFrom: '',
+      dateTo: '',
+      month: '',
+      year: '',
     });
   };
 

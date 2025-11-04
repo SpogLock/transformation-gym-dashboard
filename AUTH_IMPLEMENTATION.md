@@ -38,7 +38,7 @@ Base API configuration and fetch wrapper that:
 - Handles common HTTP configurations
 - Automatically includes authentication tokens
 - Manages error responses
-- Base URL: `https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api`
+- Base URL: `http://localhost:8000/api`
 
 #### `authService.js`
 Authentication service providing functions for:

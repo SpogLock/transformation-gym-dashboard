@@ -9,7 +9,7 @@ Base API configuration and fetch wrapper.
 
 **Configuration:**
 ```javascript
-const API_BASE_URL = 'https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 ```
 
 **Usage:**

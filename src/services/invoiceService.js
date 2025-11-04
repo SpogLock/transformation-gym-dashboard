@@ -61,7 +61,7 @@ export const getInvoice = async (invoiceId) => {
 // Print an invoice to thermal printer
 export const printInvoice = async (invoiceId) => {
   const token = localStorage.getItem('auth_token');
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
   
   const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/print`, {
     method: 'GET',
@@ -81,7 +81,7 @@ export const printInvoice = async (invoiceId) => {
 // Download an invoice PDF
 export const downloadInvoice = async (invoiceId, filename) => {
   const token = localStorage.getItem('auth_token');
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
   
   const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/download`, {
     method: 'GET',

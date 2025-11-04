@@ -39,6 +39,7 @@ import {
   Select,
   Checkbox,
   Avatar,
+  Input,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, PhoneIcon, EmailIcon, StarIcon, CloseIcon, SettingsIcon, HamburgerIcon, AttachmentIcon, DownloadIcon, AddIcon, RepeatIcon } from "@chakra-ui/icons";
 import { forceMarkOverdueFees } from "services/overdueService";
@@ -189,6 +190,53 @@ const Authors = ({ title, captions, data }) => {
       filtered = filtered.filter(c => c.has_trainer === requiresTrainer);
     }
 
+    // Date-based filters
+    const getCreatedAtDate = (c) => {
+      const raw = c.created_at || c.registrationDate || c.registration_date || '';
+      const str = typeof raw === 'string' ? raw : '';
+      // Accept both ISO and YYYY-MM-DD
+      const parsed = new Date(str);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom);
+      filtered = filtered.filter(c => {
+        const d = getCreatedAtDate(c);
+        return d ? d >= from : false;
+      });
+    }
+
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo);
+      // Include entire day
+      to.setHours(23,59,59,999);
+      filtered = filtered.filter(c => {
+        const d = getCreatedAtDate(c);
+        return d ? d <= to : false;
+      });
+    }
+
+    if (filters.month) {
+      const monthNum = parseInt(filters.month, 10) - 1; // 0-based
+      if (!isNaN(monthNum)) {
+        filtered = filtered.filter(c => {
+          const d = getCreatedAtDate(c);
+          return d ? d.getMonth() === monthNum : false;
+        });
+      }
+    }
+
+    if (filters.year) {
+      const yearNum = parseInt(filters.year, 10);
+      if (!isNaN(yearNum)) {
+        filtered = filtered.filter(c => {
+          const d = getCreatedAtDate(c);
+          return d ? d.getFullYear() === yearNum : false;
+        });
+      }
+    }
+
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -199,10 +247,20 @@ const Authors = ({ title, captions, data }) => {
       );
     }
 
+    // Sort by created date desc (newest first)
+    filtered.sort((a, b) => {
+      const ad = getCreatedAtDate(a);
+      const bd = getCreatedAtDate(b);
+      if (ad && bd) return bd - ad;
+      if (ad) return -1;
+      if (bd) return 1;
+      return 0;
+    });
+
     // Map to display format
     const rows = filtered.map(mapApiCustomerToRow);
     setStockData(rows);
-  }, [customers, searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired]);
+  }, [customers, searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired, filters.dateFrom, filters.dateTo, filters.month, filters.year]);
 
   const handleAddCustomer = async (newCustomer) => {
     // Map UI fields to API payload where possible
@@ -698,6 +756,60 @@ const Authors = ({ title, captions, data }) => {
             Customer Management
           </Text>
           <Flex gap="6px" flexShrink={0} ms={{ base: "auto", md: "auto" }}>
+            {/* Quick Month/Year filters */}
+            <HStack display={{ base: 'none', md: 'flex' }} spacing={2} me={2}>
+              <Input
+                type="date"
+                size="xs"
+                value={filters.dateFrom}
+                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+                w="140px"
+                placeholder="From"
+              />
+              <Input
+                type="date"
+                size="xs"
+                value={filters.dateTo}
+                onChange={(e) => updateFilters({ dateTo: e.target.value })}
+                w="140px"
+                placeholder="To"
+              />
+              <Select
+                placeholder="Month"
+                size="xs"
+                value={filters.month}
+                onChange={(e) => updateFilters({ month: e.target.value })}
+                w="110px"
+              >
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </Select>
+              <Select
+                placeholder="Year"
+                size="xs"
+                value={filters.year}
+                onChange={(e) => updateFilters({ year: e.target.value })}
+                w="90px"
+              >
+                {Array.from(new Set(customers
+                  .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
+                  .filter(Boolean)
+                )).sort((a,b)=>b-a).slice(0,8).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </Select>
+              <Button size="xs" variant="ghost" onClick={() => clearFilters()}>Clear</Button>
+            </HStack>
             <Menu>
               <MenuButton
                 as={Button}
@@ -778,7 +890,7 @@ const Authors = ({ title, captions, data }) => {
         ) : isMobile ? (
            // Mobile List View - Minimal Info
            <VStack spacing={3} align="stretch" w="100%">
-             {filteredCustomers.map((customer, index) => (
+             {stockData.map((customer, index) => (
                <Box
                  key={`${customer.id}-${index}`}
                  bg={cardBg}

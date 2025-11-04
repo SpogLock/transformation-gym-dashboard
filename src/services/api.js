@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://transformation-gym-backend-main-6gfz8p.laravel.cloud/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 /**
  * Base fetch wrapper with common configurations
