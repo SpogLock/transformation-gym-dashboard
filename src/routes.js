@@ -34,14 +34,6 @@ var dashRoutes = [
   { path: "/signin", name: "Sign In", component: SignIn, layout: "/auth", hidden: true },
   { path: "/signup", name: "Sign Up", component: SignUp, layout: "/auth", hidden: true },
   {
-    path: "/dashboard",
-    name: "Dashboard",
-    rtlName: "لوحة القيادة",
-    icon: <HomeIcon color="inherit" />,
-    component: Dashboard,
-    layout: "/admin",
-  },
-  {
     path: "/sales-analytics",
     name: "Sales & Analytics",
     rtlName: "لوحة القيادة",
