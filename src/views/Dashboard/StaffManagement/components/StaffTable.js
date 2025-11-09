@@ -26,6 +26,13 @@ import {
   InputLeftElement,
   Select,
   useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
 } from "@chakra-ui/react";
 import { AddIcon, HamburgerIcon, SettingsIcon, AttachmentIcon, ViewIcon, EditIcon, DeleteIcon, SearchIcon } from "@chakra-ui/icons";
 import Card from "components/Card/Card";
@@ -45,6 +52,11 @@ const StaffTable = () => {
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const cardBg = useColorModeValue("white", "gray.800");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: filterModalOpen,
+    onOpen: openFilterModal,
+    onClose: closeFilterModal,
+  } = useDisclosure();
   const { searchQuery } = useSearch();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const isTablet = useBreakpointValue({ base: false, md: true, lg: false });
@@ -61,6 +73,11 @@ const StaffTable = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const hasActiveFilters = roleFilter !== "all" || statusFilter !== "all";
   const getFilterCount = () => [roleFilter, statusFilter].filter(v => v !== "all").length;
+
+  const handleClearStaffFilters = () => {
+    setRoleFilter("all");
+    setStatusFilter("all");
+  };
 
   // Load staff from API
   const loadStaff = useCallback(async () => {
@@ -347,7 +364,11 @@ const StaffTable = () => {
                 Actions
               </MenuButton>
               <MenuList>
-                <MenuItem icon={<SettingsIcon />} position="relative">
+                <MenuItem
+                  icon={<SettingsIcon />}
+                  position="relative"
+                  onClick={openFilterModal}
+                >
                   <HStack justify="space-between" w="full">
                     <Text>Advanced Filters</Text>
                     {hasActiveFilters && (
@@ -361,6 +382,56 @@ const StaffTable = () => {
             </Menu>
           </Flex>
         </Flex>
+        <Modal isOpen={filterModalOpen} onClose={closeFilterModal} isCentered size="sm">
+          <ModalOverlay backdropFilter="blur(4px)" bg="rgba(0,0,0,0.35)" />
+          <ModalContent borderRadius="20px">
+            <ModalHeader color={textColor}>Advanced Filters</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={3} align="stretch">
+                <Select
+                  size="sm"
+                  placeholder="All Roles"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                </Select>
+                <Select
+                  size="sm"
+                  placeholder="All Status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </Select>
+              </VStack>
+            </ModalBody>
+            <ModalFooter gap={3}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  handleClearStaffFilters();
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                colorScheme="brand"
+                size="sm"
+                onClick={closeFilterModal}
+              >
+                Apply
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </CardHeader>
       <CardBody overflow="visible">
         {/* Show empty state if no staff */}

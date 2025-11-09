@@ -17,6 +17,8 @@ export const SearchProvider = ({ children }) => {
     customerPlan: '',
     feeStatus: '',
     trainerRequired: '',
+    category: '',
+    stockStatus: '',
     // New date filters
     dateFrom: '', // YYYY-MM-DD
     dateTo: '',   // YYYY-MM-DD
@@ -39,6 +41,8 @@ export const SearchProvider = ({ children }) => {
       customerPlan: '',
       feeStatus: '',
       trainerRequired: '',
+      category: '',
+      stockStatus: '',
       dateFrom: '',
       dateTo: '',
       month: '',

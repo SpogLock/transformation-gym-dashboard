@@ -270,10 +270,12 @@ const SalesTable = () => {
       }));
 
       // Process the sale
+      const normalizedPaymentMethod = paymentMethod || "cash";
+
       const result = await processPOSSale(
         cartItems,
         selectedCustomer?.id || null,
-        paymentMethod.toLowerCase().replace(' ', '_'),
+        normalizedPaymentMethod,
         discountAmount,
         0, // No tax
         `POS sale - ${selectedCustomer ? selectedCustomer.name : 'Guest'}`,
@@ -477,12 +479,13 @@ const SalesTable = () => {
                             PKR {parseFloat(product.selling_price).toLocaleString()}
                           </Text>
                           <Badge
-                            colorScheme={product.stock < 10 ? "red" : product.stock < 30 ? "yellow" : "green"}
+                            colorScheme={product.stock <= 3 ? "red" : product.stock <= 10 ? "yellow" : "green"}
                             variant="subtle"
                             fontSize="xs"
                             w="fit-content"
                           >
                             {product.stock} in stock
+                            {product.stock <= 3 ? " • Low" : product.stock <= 10 ? " • Medium" : ""}
                           </Badge>
                         </VStack>
                         
@@ -725,22 +728,25 @@ const SalesTable = () => {
                       Payment Method
                     </Text>
                     <HStack spacing={2}>
-                      {["Cash", "Card", "Other"].map(method => (
+                      {[
+                        { label: "Cash", value: "cash" },
+                        { label: "Online", value: "card" },
+                      ].map(method => (
                         <Button
-                          key={method}
+                          key={method.value}
                           size="sm"
-                          variant={paymentMethod === method ? "solid" : "outline"}
-                          onClick={() => setPaymentMethod(method)}
+                          variant={paymentMethod === method.value ? "solid" : "outline"}
+                          onClick={() => setPaymentMethod(method.value)}
                           flex="1"
-                          borderColor={paymentMethod === method ? "transparent" : "brand.500"}
-                          color={paymentMethod === method ? "white" : "brand.500"}
-                          bg={paymentMethod === method ? "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)" : "transparent"}
-                          backgroundImage={paymentMethod === method ? "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)" : undefined}
-                          _hover={paymentMethod === method ? { bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)", color: "white" } : { bg: "rgba(49, 151, 149, 0.08)", borderColor: "brand.500" }}
-                          _active={paymentMethod === method ? { bg: "brand.600" } : undefined}
+                          borderColor={paymentMethod === method.value ? "transparent" : "brand.500"}
+                          color={paymentMethod === method.value ? "white" : "brand.500"}
+                          bg={paymentMethod === method.value ? "linear-gradient(81.62deg, brand.500 2.25%, brand.600 79.87%)" : "transparent"}
+                          backgroundImage={paymentMethod === method.value ? "linear-gradient(81.62deg, var(--chakra-colors-brand-500) 2.25%, var(--chakra-colors-brand-600) 79.87%)" : undefined}
+                          _hover={paymentMethod === method.value ? { bg: "linear-gradient(81.62deg, brand.600 2.25%, #234E52 79.87%)", color: "white" } : { bg: "rgba(49, 151, 149, 0.08)", borderColor: "brand.500" }}
+                          _active={paymentMethod === method.value ? { bg: "brand.600" } : undefined}
                           _focus={{ boxShadow: "0 0 0 2px rgba(49, 151, 149, 0.4)" }}
                         >
-                          {method}
+                          {method.label}
                         </Button>
                       ))}
                     </HStack>

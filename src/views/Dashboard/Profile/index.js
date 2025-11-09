@@ -16,6 +16,14 @@ import EditCustomerModal from "components/Modals/EditCustomerModal";
 import { useHistory } from "react-router-dom";
 import AppLoader from "components/Loaders/AppLoader";
 
+const parseCurrencyInput = (value) => {
+  if (value === undefined || value === null) return null;
+  const numericString = `${value}`.replace(/[^0-9.]/g, '');
+  if (numericString.trim() === '') return null;
+  const parsed = Number.parseFloat(numericString);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 function Profile() {
   // Chakra color mode
   const textColor = useColorModeValue("gray.700", "white");
@@ -104,6 +112,9 @@ function Profile() {
   const handleSaveEdit = async (formData, selectedFile) => {
     if (!editCustomer) return;
     try {
+      const monthlyFeeValue = parseCurrencyInput(formData.monthlyFee);
+      const registrationFeeValue = parseCurrencyInput(formData.registrationFee);
+
       const updatePayload = {
         name: formData.memberName,
         email: formData.email,
@@ -113,12 +124,22 @@ function Profile() {
         status: (formData.membershipStatus || '').toLowerCase(),
         // 'plan' enum deprecated; rely on plan_id per updated API
         plan_id: formData.plan_id ? parseInt(formData.plan_id) : undefined,
-        monthly_fee: formData.monthlyFee ? parseInt((formData.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
-        registration_fee: formData.registrationFee ? parseInt((formData.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
         has_trainer: formData.trainerRequired === 'Yes',
         age: formData.customerAge ? parseInt((formData.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
         weight: formData.customerWeight ? parseFloat((formData.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
       };
+
+      if (formData.monthlyFee === '') {
+        updatePayload.monthly_fee = null;
+      } else if (monthlyFeeValue !== null) {
+        updatePayload.monthly_fee = monthlyFeeValue;
+      }
+
+      if (formData.registrationFee === '') {
+        updatePayload.registration_fee = null;
+      } else if (registrationFeeValue !== null) {
+        updatePayload.registration_fee = registrationFeeValue;
+      }
       const updatedCustomer = await updateCustomerContext(editCustomer.id, updatePayload, selectedFile);
       setIsEditOpen(false);
       setEditCustomer(null);

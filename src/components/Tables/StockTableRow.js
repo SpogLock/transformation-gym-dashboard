@@ -49,6 +49,9 @@ function StockTableRow(props) {
     customerAge,
     monthlyFee,
     nextDueDate,
+    nextDueDateRaw,
+    feePaidDate,
+    feeStatus,
     onMouseEnter,
     onMouseLeave,
     onClick,
@@ -60,39 +63,73 @@ function StockTableRow(props) {
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const hoverBg = useColorModeValue("brand.50", "brand.900");
 
-  // Check if customer fee is overdue
-  const isFeeOverdue = (nextDueDate) => {
-    const today = new Date();
-    const dueDate = new Date(nextDueDate);
-    return dueDate < today;
+  const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
+  const parseDateSafe = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
   };
 
-  // Get fee status with days
-  const getFeeStatus = (nextDueDate, customerId) => {
+  const ensureFeeStatus = (existingStatus, nextDueDateValue, lastPaymentDateValue) => {
+    if (existingStatus && existingStatus.status) {
+      return existingStatus;
+    }
+
     const today = new Date();
-    const dueDate = new Date(nextDueDate);
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Use customer ID to determine if they should be paid (consistent random assignment)
-    const isPaid = (customerId % 3 === 0); // Every 3rd customer is paid
-    
-    if (isPaid) {
-      // For paid customers, show days since last payment (random between 1-30 days ago)
-      const daysAgo = (customerId % 30) + 1; // Consistent based on customer ID
-      return { status: 'paid', days: daysAgo, color: 'green' };
-    } else if (diffDays < 0) {
-      return { status: 'overdue', days: Math.abs(diffDays), color: 'red' };
-    } else if (diffDays === 0) {
-      return { status: 'due_today', days: 0, color: 'orange' };
-    } else if (diffDays <= 7) {
-      return { status: 'due_soon', days: diffDays, color: 'yellow' };
-    } else {
-      return { status: 'paid', days: diffDays, color: 'green' };
+    const nextDue = parseDateSafe(nextDueDateValue);
+    const lastPayment = parseDateSafe(lastPaymentDateValue);
+
+    if (lastPayment) {
+      const daysSincePayment = Math.max(0, Math.floor((today - lastPayment) / DAY_IN_MS));
+
+      if (nextDue && today > nextDue) {
+        const overdueDays = Math.max(1, Math.floor((today - nextDue) / DAY_IN_MS));
+        return { status: 'overdue', days: overdueDays, color: 'red' };
+      }
+
+      return { status: 'paid', days: daysSincePayment, color: 'green' };
+    }
+
+    if (nextDue) {
+      const diffDays = Math.floor((nextDue - today) / DAY_IN_MS);
+
+      if (diffDays < 0) {
+        return { status: 'overdue', days: Math.abs(diffDays), color: 'red' };
+      }
+      if (diffDays === 0) {
+        return { status: 'due_today', days: 0, color: 'orange' };
+      }
+      if (diffDays <= 7) {
+        return { status: 'due_soon', days: diffDays, color: 'yellow' };
+      }
+      return { status: 'upcoming', days: diffDays, color: 'green' };
+    }
+
+    return { status: 'unknown', days: 0, color: 'gray' };
+  };
+
+  const resolvedFeeStatus = ensureFeeStatus(feeStatus, nextDueDateRaw || nextDueDate, feePaidDate);
+
+  const formatRelativeFeeText = (status) => {
+    if (!status || !status.status) return 'No data';
+    const { status: state, days } = status;
+    const plural = days === 1 ? 'day' : 'days';
+
+    switch (state) {
+      case 'paid':
+        return days === 0 ? 'Today' : `${days} ${plural} ago`;
+      case 'overdue':
+        return days === 0 ? 'Today' : `${days} ${plural} overdue`;
+      case 'due_today':
+        return 'Today';
+      case 'due_soon':
+      case 'upcoming':
+        return days === 0 ? 'Today' : `in ${days} ${plural}`;
+      default:
+        return 'No data';
     }
   };
-
-  const feeStatus = getFeeStatus(nextDueDate, id);
 
 
 
@@ -238,19 +275,12 @@ function StockTableRow(props) {
       {/* Fee Status */}
       <Td width="10%" px="16px" py="12px" textAlign="left">
         <Text fontSize="xs" color={textColor} fontWeight="500" whiteSpace="nowrap">
-          <Text as="span" color={`${feeStatus.color}.600`} fontWeight="600" textTransform="uppercase">
-            {feeStatus.status.replace('_', ' ')}
+          <Text as="span" color={`${resolvedFeeStatus.color}.600`} fontWeight="600" textTransform="uppercase">
+            {resolvedFeeStatus.status.replace('_', ' ')}
           </Text>
           {' '}
           <Text as="span" color="gray.500">
-            {feeStatus.status === 'paid' 
-              ? `${feeStatus.days} ${feeStatus.days === 1 ? 'day' : 'days'} ago`
-              : feeStatus.days === 0 
-                ? 'Today' 
-                : feeStatus.days === 1 
-                  ? '1 day' 
-                  : `${feeStatus.days} days`
-            }
+            {formatRelativeFeeText(resolvedFeeStatus)}
           </Text>
         </Text>
       </Td>

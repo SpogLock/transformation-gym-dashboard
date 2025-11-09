@@ -788,13 +788,12 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
 
                 <FormControl>
                   <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">
-                    Next Due Date (Auto-calculated)
+                    Next Due Date
                   </FormLabel>
                   <Input
                     type="date"
                     value={formData.nextDueDate}
-                    readOnly
-                    bg="gray.100"
+                    onChange={(e) => handleInputChange("nextDueDate", e.target.value)}
                     borderRadius="12px"
                     border="1px solid"
                     borderColor="gray.200"
@@ -803,6 +802,9 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                       boxShadow: "0 0 0 1px var(--chakra-colors-teal-500)",
                     }}
                   />
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    Auto-filled from fee paid date. Adjust if the billing cycle needs to change.
+                  </Text>
                 </FormControl>
               </VStack>
             </Box>

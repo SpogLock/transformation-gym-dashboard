@@ -15,7 +15,7 @@
 
 */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Flex,
@@ -38,11 +38,6 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  SimpleGrid,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Wrap,
   WrapItem,
   useToast,
@@ -50,103 +45,59 @@ import {
 import Card from "components/Card/Card";
 import CardHeader from "components/Card/CardHeader";
 import CardBody from "components/Card/CardBody";
-import { FaDownload, FaArrowUp, FaArrowDown, FaCalendar, FaChevronDown } from "react-icons/fa";
+import { FaDownload, FaArrowUp, FaArrowDown, FaChevronDown } from "react-icons/fa";
 import RevenueChart from "./components/RevenueChart";
 import CategoriesChart from "./components/CategoriesChart";
 import BestSellingProducts from "./components/BestSellingProducts";
 import BestSellingCategories from "./components/BestSellingCategories";
+import AppLoader from "components/Loaders/AppLoader";
+import { getAnalyticsDashboard } from "services/analyticsService";
 
-// Mock data for different time periods
-const mockData = {
-  today: {
-    kpis: {
-      gross_revenue: { value: 120000, change: 11, change_type: "increase" },
-      avg_order_value: { value: 20000, change: 2, change_type: "increase" },
-      conversion_rate: { value: 3, change: 4, change_type: "increase" },
-      customers: { value: 80, change: -2, change_type: "decrease" }
-    },
-    charts: {
-      revenue_trend: {
-        labels: ['Sat 20', 'Sun 21', 'Mon 22', 'Tue 23', 'Wed 24', 'Thu 25', 'Fri 26'],
-        data: [2000, 3000, 4000, 5000, 6000, 7000, 8500]
-      },
-      category_breakdown: [
-        { name: "Others", value: 20 },
-        { name: "Misc", value: 30 },
-        { name: "Construction Materials", value: 40 },
-        { name: "Electrical Accessories", value: 50 },
-        { name: "Sanitary Materials", value: 60 },
-        { name: "Tools & Hardware", value: 70 },
-        { name: "PVC & Pipes", value: 80 }
-      ]
-    },
-    best_selling_products: [
-      { id: 1, name: "Electric Drill", revenue: 20000, sales: 195, image: "🔧" },
-      { id: 2, name: "Electric Ranch", revenue: 20000, sales: 90, image: "🔧" },
-      { id: 3, name: "Rubber Hammer", revenue: 20000, sales: 330, image: "🔨" },
-      { id: 4, name: "Electric Multi Tool", revenue: 20000, sales: 56, image: "🔧" },
-      { id: 5, name: "Steel Hammer", revenue: 20000, sales: 35, image: "🔨" }
-    ]
+// View-specific configuration for UI rendering
+const analyticsViewConfig = {
+  inventory: {
+    label: "Inventory Sales",
+    description: "Monitor point-of-sale performance and stock-driven revenue.",
+    kpiFields: [
+      { key: "gross_revenue", title: "Gross revenue", format: "currency", changeFormat: "percentage" },
+      { key: "avg_order_value", title: "Avg. order value", format: "currency", changeFormat: "percentage" },
+      { key: "conversion_rate", title: "Conversion rate", format: "percentage", changeFormat: "percentage" },
+      { key: "customers", title: "Customers", format: "number", changeFormat: "number" }
+    ],
+    revenueTitle: "Inventory revenue trend",
+    revenueSeriesLabel: "Revenue",
+    categoriesChartTitle: "Category performance radar",
+    categoriesTableTitle: "Top product categories",
+    categoriesSeriesLabel: "Category share",
+    productsTitle: "Best selling products",
+    productsSearchPlaceholder: "Search products or categories...",
+    productsMetricLabel: "sales",
+    productsMetricColumnTitle: "Sales",
+    categoriesMetricLabel: "sales",
+    categoriesMetricColumnTitle: "Sales",
+    categoriesSearchPlaceholder: "Search categories..."
   },
-  week: {
-    kpis: {
-      gross_revenue: { value: 850000, change: 8, change_type: "increase" },
-      avg_order_value: { value: 25000, change: 5, change_type: "increase" },
-      conversion_rate: { value: 4, change: 2, change_type: "increase" },
-      customers: { value: 340, change: 12, change_type: "increase" }
-    },
-    charts: {
-      revenue_trend: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        data: [180000, 220000, 200000, 250000]
-      },
-      category_breakdown: [
-        { name: "Others", value: 25 },
-        { name: "Misc", value: 35 },
-        { name: "Construction Materials", value: 45 },
-        { name: "Electrical Accessories", value: 55 },
-        { name: "Sanitary Materials", value: 65 },
-        { name: "Tools & Hardware", value: 75 },
-        { name: "PVC & Pipes", value: 85 }
-      ]
-    },
-    best_selling_products: [
-      { id: 1, name: "Electric Drill", revenue: 50000, sales: 450, image: "🔧" },
-      { id: 2, name: "Electric Ranch", revenue: 45000, sales: 200, image: "🔧" },
-      { id: 3, name: "Rubber Hammer", revenue: 60000, sales: 800, image: "🔨" },
-      { id: 4, name: "Electric Multi Tool", revenue: 40000, sales: 150, image: "🔧" },
-      { id: 5, name: "Steel Hammer", revenue: 35000, sales: 100, image: "🔨" }
-    ]
-  },
-  month: {
-    kpis: {
-      gross_revenue: { value: 3200000, change: 15, change_type: "increase" },
-      avg_order_value: { value: 28000, change: 8, change_type: "increase" },
-      conversion_rate: { value: 5, change: 3, change_type: "increase" },
-      customers: { value: 1200, change: 18, change_type: "increase" }
-    },
-    charts: {
-      revenue_trend: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        data: [700000, 800000, 750000, 950000]
-      },
-      category_breakdown: [
-        { name: "Others", value: 30 },
-        { name: "Misc", value: 40 },
-        { name: "Construction Materials", value: 50 },
-        { name: "Electrical Accessories", value: 60 },
-        { name: "Sanitary Materials", value: 70 },
-        { name: "Tools & Hardware", value: 80 },
-        { name: "PVC & Pipes", value: 90 }
-      ]
-    },
-    best_selling_products: [
-      { id: 1, name: "Electric Drill", revenue: 200000, sales: 1800, image: "🔧" },
-      { id: 2, name: "Electric Ranch", revenue: 180000, sales: 800, image: "🔧" },
-      { id: 3, name: "Rubber Hammer", revenue: 250000, sales: 3200, image: "🔨" },
-      { id: 4, name: "Electric Multi Tool", revenue: 160000, sales: 600, image: "🔧" },
-      { id: 5, name: "Steel Hammer", revenue: 140000, sales: 400, image: "🔨" }
-    ]
+  subscriptions: {
+    label: "Customer Subscriptions",
+    description: "Track recurring membership revenue and retention health.",
+    kpiFields: [
+      { key: "monthly_recurring_revenue", title: "Monthly recurring revenue", format: "currency", changeFormat: "percentage" },
+      { key: "active_subscriptions", title: "Active subscriptions", format: "number", changeFormat: "number" },
+      { key: "churn_rate", title: "Churn rate", format: "percentage", changeFormat: "percentage", periodPrefix: "vs" },
+      { key: "new_signups", title: "New sign-ups", format: "number", changeFormat: "number" }
+    ],
+    revenueTitle: "Subscription revenue trend",
+    revenueSeriesLabel: "Recurring revenue",
+    categoriesChartTitle: "Plan distribution",
+    categoriesTableTitle: "Key member segments",
+    categoriesSeriesLabel: "Plan share",
+    productsTitle: "Top subscription plans",
+    productsSearchPlaceholder: "Search plans or tiers...",
+    productsMetricLabel: "active subs",
+    productsMetricColumnTitle: "Active subs",
+    categoriesMetricLabel: "members",
+    categoriesMetricColumnTitle: "Members",
+    categoriesSearchPlaceholder: "Search segments..."
   }
 };
 
@@ -157,6 +108,7 @@ function SalesAnalytics() {
   const toast = useToast();
   
   // State management
+  const [analyticsView, setAnalyticsView] = useState("inventory");
   const [timePeriod, setTimePeriod] = useState("today");
   const [compareMode, setCompareMode] = useState(false);
   const [customDateRange, setCustomDateRange] = useState({
@@ -164,53 +116,79 @@ function SalesAnalytics() {
     endDate: ""
   });
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Get current data based on time period
-  const getCurrentData = () => {
-    return mockData[timePeriod] || mockData.today;
-  };
+  const currentViewMeta = analyticsViewConfig[analyticsView] || analyticsViewConfig.inventory;
+  const viewKeys = Object.keys(analyticsViewConfig);
+  const rangeParam = timePeriod === "Custom date" ? "custom" : timePeriod;
+  const customRangeKey =
+    rangeParam === "custom"
+      ? `${customDateRange.startDate || ""}|${customDateRange.endDate || ""}`
+      : "";
 
-  // Format currency helper
+  // Format helpers
   const formatCurrency = (amount) => {
     return `PKR. ${Number(amount || 0).toLocaleString()}`;
   };
 
+  const parseNumeric = (value) => {
+    if (value === undefined || value === null) {
+      return 0;
+    }
+    if (typeof value === "number") {
+      return Number.isNaN(value) ? 0 : value;
+    }
+    const parsed = parseFloat(value.toString().replace(/,/g, ""));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const countFormatter = (value) => parseNumeric(value).toLocaleString();
+
+  const formatValueByType = (value, type) => {
+    const numeric = parseNumeric(value);
+    switch (type) {
+      case "currency":
+        return formatCurrency(numeric);
+      case "percentage":
+        return `${numeric % 1 === 0 ? numeric : numeric.toFixed(1)}%`;
+      case "number":
+      default:
+        return numeric.toLocaleString();
+    }
+  };
+
+  const formatChangeValue = (value, type) => {
+    if (value === undefined || value === null) {
+      return type === "percentage" ? "0%" : "0";
+    }
+    return formatValueByType(value, type);
+  };
+
   // Get KPI data
   const getKpiData = () => {
-    const data = getCurrentData();
-    const kpis = data.kpis;
+    const data = analyticsData || {};
+    const kpis = data.kpis || {};
     const periodLabel = getPeriodLabel();
+    const kpiFields = currentViewMeta?.kpiFields || [];
 
-    return [
-      {
-        title: "Gross revenue",
-        value: formatCurrency(kpis.gross_revenue?.value || 0),
-        change: `${kpis.gross_revenue?.change || 0}%`,
-        changeType: kpis.gross_revenue?.change_type || "increase",
-        period: `From ${periodLabel}`
-      },
-      {
-        title: "Avg. order value",
-        value: formatCurrency(kpis.avg_order_value?.value || 0),
-        change: `${kpis.avg_order_value?.change || 0}%`,
-        changeType: kpis.avg_order_value?.change_type || "increase",
-        period: `From ${periodLabel}`
-      },
-      {
-        title: "Conversion rate",
-        value: `${kpis.conversion_rate?.value || 0}%`,
-        change: `${kpis.conversion_rate?.change || 0}%`,
-        changeType: kpis.conversion_rate?.change_type || "increase",
-        period: `From ${periodLabel}`
-      },
-      {
-        title: "Customers",
-        value: `${kpis.customers?.value || 0}`,
-        change: `${kpis.customers?.change || 0}`,
-        changeType: kpis.customers?.change_type || "increase",
-        period: `From ${periodLabel}`
-      }
-    ];
+    return kpiFields.map((field) => {
+      const metric = kpis[field.key] || {};
+      const changeFormat = field.changeFormat || "percentage";
+      const changeType =
+        metric.change_type ||
+        (Number(metric.change ?? 0) >= 0 ? "increase" : "decrease");
+
+      return {
+        title: field.title,
+        value: formatValueByType(metric.value, field.format),
+        change: formatChangeValue(metric.change, changeFormat),
+        changeType,
+        period: `${field.periodPrefix || "From"} ${periodLabel}`
+      };
+    });
   };
 
   // Get period label for comparison text
@@ -227,7 +205,7 @@ function SalesAnalytics() {
   };
 
   const kpiData = getKpiData();
-  const currentData = getCurrentData();
+  const currentData = analyticsData || { kpis: {}, charts: {}, tables: {} };
 
   const timePeriods = ["today", "week", "month", "business_season", "year", "Custom date"];
 
@@ -254,6 +232,7 @@ function SalesAnalytics() {
 
   // Handle time period change
   const handleTimePeriodChange = (period) => {
+    setErrorMessage("");
     setTimePeriod(period);
     if (period === "Custom date") {
       setShowCustomDatePicker(true);
@@ -262,15 +241,87 @@ function SalesAnalytics() {
     }
   };
 
+  // Fetch analytics data from backend
+  useEffect(() => {
+    const needsDates =
+      rangeParam === "custom" &&
+      (!customDateRange.startDate || !customDateRange.endDate);
+
+    if (needsDates) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      setErrorMessage("");
+      setAnalyticsData(null);
+
+      try {
+        const data = await getAnalyticsDashboard({
+          view: analyticsView,
+          range: rangeParam,
+          start: rangeParam === "custom" ? customDateRange.startDate : undefined,
+          end: rangeParam === "custom" ? customDateRange.endDate : undefined,
+        });
+
+        if (!cancelled) {
+          setAnalyticsData(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error?.message || "Failed to load analytics dashboard data";
+          setErrorMessage(message);
+          toast({
+            title: "Analytics load failed",
+            description: message,
+            status: "error",
+            duration: 4000,
+            isClosable: true,
+            position: "top-right",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAnalytics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analyticsView, rangeParam, customRangeKey, toast, reloadKey]);
+
+  const handleRetry = () => {
+    setReloadKey((prev) => prev + 1);
+  };
+
   // Export analytics data (static)
   const exportAnalytics = () => {
+    if (!analyticsData) {
+      toast({
+        title: "No data to export",
+        description: "Please load analytics data before exporting.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     try {
       const dataStr = JSON.stringify(currentData, null, 2);
       const dataBlob = new Blob([dataStr], {type: 'application/json'});
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `analytics_${timePeriod}_${new Date().toISOString().split('T')[0]}.json`;
+      const filePrefix = `${analyticsView}_${timePeriod}`.replace(/\s+/g, "_").toLowerCase();
+      link.download = `analytics_${filePrefix}_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -293,6 +344,37 @@ function SalesAnalytics() {
     }
   };
 
+  if (loading && !analyticsData) {
+    return (
+      <Flex direction='column' pt={{ base: "120px", md: "75px" }}>
+        <AppLoader
+          message={`Loading ${currentViewMeta?.label || ""} analytics...`}
+          fullHeight
+        />
+      </Flex>
+    );
+  }
+
+  if (errorMessage && !analyticsData) {
+    return (
+      <Flex
+        direction='column'
+        pt={{ base: "120px", md: "75px" }}
+        align='center'
+        justify='center'
+        minH='400px'
+        gap={4}
+      >
+        <Text color='red.500' fontWeight='semibold' textAlign='center'>
+          Unable to load analytics data. Please try again.
+        </Text>
+        <Button colorScheme='teal' onClick={handleRetry}>
+          Retry
+        </Button>
+      </Flex>
+    );
+  }
+
   return (
     <Flex direction='column' pt={{ base: "120px", md: "75px" }}>
       {/* Header Section */}
@@ -310,6 +392,40 @@ function SalesAnalytics() {
             direction='column'
             w='100%'
             gap='16px'>
+            
+            {/* Analytics view toggle */}
+            <Wrap spacing='8px'>
+              {viewKeys.map((viewKey) => {
+                const viewMeta = analyticsViewConfig[viewKey];
+                const isActive = analyticsView === viewKey;
+                return (
+                  <WrapItem key={viewKey}>
+                    <Button
+                      size='md'
+                      variant={isActive ? 'solid' : 'outline'}
+                      colorScheme='teal'
+                      bg={isActive ? 'brand.500' : 'transparent'}
+                      color={isActive ? 'white' : 'brand.500'}
+                      borderColor='brand.500'
+                      fontWeight='semibold'
+                      px='20px'
+                      _hover={{
+                        bg: isActive ? '#2C7A7B' : 'rgba(49, 151, 149, 0.1)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: 'md'
+                      }}
+                      transition='all 0.2s'
+                      onClick={() => setAnalyticsView(viewKey)}
+                    >
+                      {viewMeta?.label || viewKey}
+                    </Button>
+                  </WrapItem>
+                );
+              })}
+            </Wrap>
+            <Text fontSize='sm' color='gray.500'>
+              {currentViewMeta?.description}
+            </Text>
             
             {/* Desktop: Time Period Buttons */}
             <Wrap spacing='8px' display={{ base: "none", md: "flex" }}>
@@ -463,6 +579,7 @@ function SalesAnalytics() {
                 variant='outline'
                 borderColor='brand.500'
                 color='brand.500'
+                isDisabled={loading || !analyticsData}
                 size='sm'
                 fontWeight='semibold'
                 px='24px'
@@ -486,6 +603,17 @@ function SalesAnalytics() {
           <Text fontSize='sm' color='gray.500' fontWeight='medium'>
             Showing data for:
           </Text>
+          <Badge
+            colorScheme='yellow'
+            bg='yellow.500'
+            color='white'
+            px='12px'
+            py='4px'
+            borderRadius='full'
+            fontSize='sm'
+            fontWeight='bold'>
+            {currentViewMeta?.label}
+          </Badge>
           <Badge
             colorScheme='teal'
             bg='brand.500'
@@ -555,9 +683,14 @@ function SalesAnalytics() {
           timePeriod={timePeriod} 
           customDateRange={customDateRange}
           chartData={currentData?.charts?.revenue_trend}
+          titlePrefix={currentViewMeta?.revenueTitle}
+          seriesLabel={currentViewMeta?.revenueSeriesLabel}
         />
         <CategoriesChart 
           categoryData={currentData?.charts?.category_breakdown}
+          title={currentViewMeta?.categoriesChartTitle}
+          seriesLabel={currentViewMeta?.categoriesSeriesLabel}
+          tooltipFormatter={(value) => `${value}% share`}
         />
       </Grid>
 
@@ -571,12 +704,22 @@ function SalesAnalytics() {
         <BestSellingProducts 
           timePeriod={timePeriod} 
           customDateRange={customDateRange}
-          productsData={currentData?.best_selling_products}
+          productsData={currentData?.tables?.products || currentData?.best_selling_products}
+          title={currentViewMeta?.productsTitle}
+          searchPlaceholder={currentViewMeta?.productsSearchPlaceholder}
+          metricLabel={currentViewMeta?.productsMetricLabel}
+          metricColumnTitle={currentViewMeta?.productsMetricColumnTitle}
+          metricFormatter={countFormatter}
         />
         <BestSellingCategories 
           timePeriod={timePeriod} 
           customDateRange={customDateRange}
-          categoryData={currentData?.charts?.category_breakdown}
+          categoryData={currentData?.tables?.segments || currentData?.best_selling_categories}
+          title={currentViewMeta?.categoriesTableTitle}
+          searchPlaceholder={currentViewMeta?.categoriesSearchPlaceholder}
+          metricLabel={currentViewMeta?.categoriesMetricLabel}
+          metricColumnTitle={currentViewMeta?.categoriesMetricColumnTitle}
+          metricFormatter={countFormatter}
         />
       </Grid>
     </Flex>

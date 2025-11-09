@@ -745,8 +745,9 @@ Authorization: Bearer {token}
   "type": "new",
   "status": "active",
   "member_type": "new",
-  "plan": "premium",
+  "plan_id": 3,
   "monthly_fee": 4500.00,
+  "registration_fee": 1500.00,
   "subscription_status": "active",
   "last_payment_date": "2024-01-15",
   "next_due_date": "2024-02-15",
@@ -762,6 +763,11 @@ Authorization: Bearer {token}
   "notes": "Regular customer, prefers morning sessions"
 }
 ```
+
+#### Fee Override Options
+- Provide `monthly_fee` to store an amount that differs from the selected plan; omit it to default to the plan's monthly fee.
+- Include `registration_fee` when collecting a custom one-time charge for this customer. Send `null` (or omit the field) to use the plan's registration fee.
+- If `plan_id` is omitted, both fee fields default to `0` unless explicitly set.
 
 #### Response (201 Created)
 ```json
@@ -864,11 +870,17 @@ Authorization: Bearer {token}
 ```json
 {
   "name": "Asim Khan Updated",
-  "weight": 74.5,
-  "fitness_goals": "Muscle Building",
-  "monthly_fee": 5000.00
+  "plan_id": 4,
+  "monthly_fee": 5000.00,
+  "registration_fee": 2500.00,
+  "fitness_goals": "Muscle Building"
 }
 ```
+
+#### Fee Override Behaviour
+- Supplying `monthly_fee` keeps your custom amount even when `plan_id` changes during the update.
+- Include `registration_fee` to persist a customer-specific registration charge; omit the field (or send `null`) to fall back to the selected plan's default fee.
+- When only `plan_id` is provided, both fees automatically refresh to the plan defaults and any previous override is removed.
 
 #### Response (200 OK)
 ```json
@@ -7115,6 +7127,161 @@ const getInvoicesByStaff = async (staffId, filters = {}) => {
 // Usage examples:
 // getInvoicesByStaff(1, { payment_status: 'paid', date_from: '2025-10-01' })
 // getInvoicesByStaff(2, { date_to: '2025-10-20' })
+```
+
+---
+
+### 67. Get Analytics Dashboard
+**GET** `/analytics/dashboard`
+
+Returns the aggregated KPIs, charts, and table datasets that power the Sales & Analytics dashboard. A single endpoint serves both Inventory Sales and Customer Subscriptions views.
+
+#### Headers Required
+```
+Authorization: Bearer {token}
+```
+
+#### Query Parameters
+- `view` (required): `inventory` | `subscriptions`
+- `range` (required): `today` | `week` | `month` | `business_season` | `year` | `custom`
+- `start_date` (required when `range=custom`): `YYYY-MM-DD`
+- `end_date` (required when `range=custom`): `YYYY-MM-DD`
+
+Unknown `view`/`range` values return `400`. Missing `start_date` or `end_date` when `range=custom` returns `422`.
+
+#### Response (200 OK) — Inventory Example
+```json
+{
+  "success": true,
+  "data": {
+    "kpis": {
+      "gross_revenue": { "value": 850000, "change": 8, "change_type": "increase" },
+      "avg_order_value": { "value": 25000, "change": 5, "change_type": "increase" },
+      "conversion_rate": { "value": 4.2, "change": 1.1, "change_type": "increase" },
+      "customers": { "value": 340, "change": 12, "change_type": "increase" }
+    },
+    "charts": {
+      "revenue_trend": {
+        "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+        "data": [180000, 220000, 200000, 250000]
+      },
+      "category_breakdown": [
+        { "name": "Supplements", "value": 38 },
+        { "name": "Training Gear", "value": 34 },
+        { "name": "Accessories", "value": 28 }
+      ]
+    },
+    "tables": {
+      "products": [
+        {
+          "id": 12,
+          "name": "Premium Whey Protein",
+          "revenue": 98000,
+          "metric": 420,
+          "category": "Supplements",
+          "image": null
+        }
+      ],
+      "segments": [
+        {
+          "id": 123456789,
+          "name": "Supplements",
+          "revenue": 310000,
+          "metric": 1450,
+          "description": "1450 units sold",
+          "image": null
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Response (200 OK) — Subscriptions Example
+```json
+{
+  "success": true,
+  "data": {
+    "kpis": {
+      "monthly_recurring_revenue": { "value": 2250000, "change": 12, "change_type": "increase" },
+      "active_subscriptions": { "value": 9300, "change": 9, "change_type": "increase" },
+      "churn_rate": { "value": 3.1, "change": -0.4, "change_type": "decrease" },
+      "new_signups": { "value": 620, "change": 14, "change_type": "increase" }
+    },
+    "charts": {
+      "revenue_trend": {
+        "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+        "data": [520000, 540000, 560000, 630000]
+      },
+      "category_breakdown": [
+        { "name": "Premium Plus", "value": 36 },
+        { "name": "Premium", "value": 29 },
+        { "name": "Standard", "value": 22 },
+        { "name": "Corporate", "value": 8 },
+        { "name": "Student", "value": 5 }
+      ]
+    },
+    "tables": {
+      "products": [
+        {
+          "id": 5,
+          "name": "Premium Plus Plan",
+          "revenue": 980000,
+          "metric": 1240,
+          "category": "Annual",
+          "image": null
+        }
+      ],
+      "segments": [
+        {
+          "id": 987654321,
+          "name": "Premium Subscribers",
+          "revenue": 1700000,
+          "metric": 4360,
+          "description": "4360 members in this cohort",
+          "image": null
+        }
+      ]
+    }
+  }
+}
+```
+
+`change` and `change_type` compare each KPI with the previous matching period. When no historical period is available the API falls back to `change: 0` and `change_type: "increase"` so the frontend displays a neutral badge. Empty datasets return empty arrays rather than `null`.
+
+Responses are cached per `view`/`range`/date window for 10 minutes to keep the dashboard fast.
+
+#### Frontend Integration Example
+```javascript
+const getAnalyticsDashboard = async ({ view = 'inventory', range = 'today', start, end } = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const params = new URLSearchParams({ view, range });
+
+  if (range === 'custom') {
+    params.append('start_date', start);
+    params.append('end_date', end);
+  }
+
+  const response = await fetch(`http://127.0.0.1:8000/api/analytics/dashboard?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  const payload = await response.json();
+
+  if (payload.success) {
+    return payload.data;
+  }
+
+  throw new Error(payload.message ?? 'Unable to load analytics');
+};
+
+// Usage examples:
+// getAnalyticsDashboard({ view: 'inventory', range: 'week' });
+// getAnalyticsDashboard({ view: 'subscriptions', range: 'custom', start: '2025-01-01', end: '2025-01-31' });
 ```
 
 ---

@@ -7,7 +7,12 @@ import CardHeader from "components/Card/CardHeader.js";
 import React from "react";
 import ReactApexChart from "react-apexcharts";
 
-const CategoriesChart = ({ categoryData }) => {
+const CategoriesChart = ({
+  categoryData,
+  title = "Best selling categories",
+  seriesLabel = "Sales Performance",
+  tooltipFormatter = (value) => `${value}% Performance`
+}) => {
   const textColor = useColorModeValue("gray.700", "white");
   const gridColor = useColorModeValue("#E2E8F0", "#4A5568");
 
@@ -31,7 +36,7 @@ const CategoriesChart = ({ categoryData }) => {
 
   const series = [
     {
-      name: "Sales Performance",
+      name: seriesLabel,
       data: processedCategories.map(item => item.sales)
     }
   ];
@@ -93,7 +98,7 @@ const CategoriesChart = ({ categoryData }) => {
       theme: useColorModeValue("light", "dark"),
       y: {
         formatter: function (value) {
-          return `${value}% Performance`;
+          return tooltipFormatter(value);
         }
       }
     },
@@ -108,7 +113,7 @@ const CategoriesChart = ({ categoryData }) => {
       <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
         <CardHeader>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Best selling categories
+            {title}
           </Text>
         </CardHeader>
         <CardBody>
@@ -126,7 +131,7 @@ const CategoriesChart = ({ categoryData }) => {
     <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
       <CardHeader>
         <Text fontSize='lg' color={textColor} fontWeight='bold'>
-          Best selling categories
+          {title}
         </Text>
       </CardHeader>
       <CardBody>

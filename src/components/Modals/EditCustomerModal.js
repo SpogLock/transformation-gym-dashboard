@@ -28,6 +28,15 @@ import {
 import { AttachmentIcon } from "@chakra-ui/icons";
 import { getPlans } from "services/planService";
 
+const normalizeCurrencyValue = (value) => {
+  if (value === undefined || value === null || value === "") return "";
+
+  const numeric = Number.parseFloat(value.toString().replace(/[^0-9.]/g, ""));
+  if (Number.isNaN(numeric)) return "";
+
+  return Number.isInteger(numeric) ? `${numeric}` : numeric.toString();
+};
+
 const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
   const [formData, setFormData] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
@@ -50,8 +59,8 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
         plan_id: customer.planId ? String(customer.planId) : "", // Convert to string for select
         customerWeight: (customer.customerWeight || "").replace(" kg", ""),
         customerAge: customer.customerAge || "",
-        monthlyFee: customer.monthlyFee ? customer.monthlyFee.replace(/[^0-9]/g, '') : "",
-        registrationFee: customer.registrationFee ? customer.registrationFee.replace(/[^0-9]/g, '') : "",
+        monthlyFee: normalizeCurrencyValue(customer.monthlyFee),
+        registrationFee: normalizeCurrencyValue(customer.registrationFee),
         feePaidDate: customer.feePaidDate || new Date().toISOString().split('T')[0],
         nextDueDate: customer.nextDueDate || "",
       });
@@ -222,8 +231,8 @@ const EditCustomerModal = ({ isOpen, onClose, customer, onSave }) => {
                         ...prev,
                         plan_id: planId,
                         customerPlan: selected.name,
-                        monthlyFee: selected.monthly_fee.toString(),
-                        registrationFee: selected.registration_fee.toString(),
+                        monthlyFee: normalizeCurrencyValue(selected.monthly_fee),
+                        registrationFee: normalizeCurrencyValue(selected.registration_fee),
                       }));
                     } else {
                       setFormData(prev => ({

@@ -1,0 +1,191 @@
+## Sales & Analytics Backend Requirements
+
+> **Summary**  
+> Build/extend an analytics endpoint that powers the updated Sales & Analytics dashboard. The UI now lets admins toggle between **Inventory Sales** and **Customer Subscriptions** while reusing the same layout (KPI cards, revenue chart, category chart, two data tables). The API must return view-specific metrics in a consistent envelope.
+
+---
+
+### 1. Endpoint Contract
+
+```
+GET /api/analytics/dashboard?view=inventory&range=today
+GET /api/analytics/dashboard?view=subscriptions&range=month
+```
+
+| Query Param  | Type / Allowed Values                                            | Notes                                                            |
+|--------------|------------------------------------------------------------------|------------------------------------------------------------------|
+| `view`       | `inventory` \| `subscriptions`                                   | Required                                                         |
+| `range`      | `today` \| `week` \| `month` \| `business_season` \| `year` \| `custom` | Required                                                         |
+| `start_date` | `YYYY-MM-DD`                                                     | Required when `range=custom`; ignored otherwise                  |
+| `end_date`   | `YYYY-MM-DD`                                                     | Required when `range=custom`; ignored otherwise                  |
+
+**Response envelope**
+```json
+{
+  "success": true,
+  "data": {
+    "kpis": {
+      "<metric_key>": { "value": 0, "change": 0, "change_type": "increase" }
+    },
+    "charts": {
+      "revenue_trend": {
+        "labels": ["string"],
+        "data": [0]
+      },
+      "category_breakdown": [
+        { "name": "string", "value": 0 }
+      ]
+    },
+    "tables": {
+      "products": [
+        {
+          "id": 1,
+          "name": "string",
+          "revenue": 0,
+          "metric": 0,
+          "category": "string",
+          "image": "url|emoji|null"
+        }
+      ],
+      "segments": [
+        {
+          "id": 1,
+          "name": "string",
+          "revenue": 0,
+          "metric": 0,
+          "description": "string",
+          "image": "url|emoji|null"
+        }
+      ]
+    }
+  }
+}
+```
+
+Return zero/empty arrays instead of `null` if data is missing so the UI stays stable.
+
+---
+
+### 2. View-Specific Metrics
+
+| View            | KPI Keys (with units)                                                                                                                                      | `tables.products.metric`                        | `tables.segments.metric`                 | Category chart meaning                       |
+|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|------------------------------------------|----------------------------------------------|
+| `inventory`     | `gross_revenue` (PKR), `avg_order_value` (PKR), `conversion_rate` (%), `customers` (count)                                                                  | Units sold per SKU                              | Units/orders per consolidated segment     | Share of POS sales by inventory category      |
+| `subscriptions` | `monthly_recurring_revenue` (PKR), `active_subscriptions` (count), `churn_rate` (%), `new_signups` (count)                                                  | Active subscribers / new sign-ups per plan      | Subscribers per cohort (premium, student) | Share of active plans / cohorts               |
+
+- Populate `change` as the delta versus the previous matching period. Set `change_type` to `"increase"` or `"decrease"` to match the sign.
+- The frontend formats currency/percentages; return plain numbers.
+- Provide optional `image` URLs/emojis for richer cards; leave `null` if unavailable.
+
+---
+
+### 3. Date Range Behaviour
+
+| Range              | Expectation                                                             | Comparison baseline (`change` calculation)        |
+|--------------------|-------------------------------------------------------------------------|--------------------------------------------------|
+| `today`            | Current-day totals (hourly granularity permitted)                        | Previous day                                     |
+| `week`             | Last 7 days (or ISO week)                                                | Previous 7-day window                            |
+| `month`            | Current month (weekly buckets acceptable)                                | Previous month                                   |
+| `business_season`  | Map to current business-cycle (e.g., quarter)                            | Previous season/quarter                          |
+| `year`             | Year-to-date (monthly buckets)                                           | Previous year                                    |
+| `custom`           | Use supplied `start_date`/`end_date`                                     | Prior period of identical length                 |
+
+If comparison data is missing, default `change` to `0` and `change_type` to `"increase"` to keep the UI neutral.
+
+---
+
+### 4. Implementation Notes
+
+- A single controller can branch on `view` and `range` to assemble the correct payload.
+- Consider caching results per view/range to reduce load—this page is dashboard-heavy.
+- Ensure the API is resilient: unknown `view`/`range` should return `400` with a helpful message.
+- Document the endpoint in API docs once implemented.
+
+---
+
+### 5. Example Payloads
+
+#### Inventory — `range=week`
+```json
+{
+  "success": true,
+  "data": {
+    "kpis": {
+      "gross_revenue": { "value": 850000, "change": 8, "change_type": "increase" },
+      "avg_order_value": { "value": 25000, "change": 5, "change_type": "increase" },
+      "conversion_rate": { "value": 4, "change": 2, "change_type": "increase" },
+      "customers": { "value": 340, "change": 12, "change_type": "increase" }
+    },
+    "charts": {
+      "revenue_trend": {
+        "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+        "data": [180000, 220000, 200000, 250000]
+      },
+      "category_breakdown": [
+        { "name": "Tools & Hardware", "value": 36 },
+        { "name": "Electrical Accessories", "value": 28 },
+        { "name": "Construction Materials", "value": 22 },
+        { "name": "PVC & Pipes", "value": 14 }
+      ]
+    },
+    "tables": {
+      "products": [
+        { "id": 1, "name": "Electric Drill", "revenue": 50000, "metric": 450, "category": "Power Tools", "image": "🔧" }
+      ],
+      "segments": [
+        { "id": 1, "name": "Tools & Hardware", "revenue": 210000, "metric": 1450, "description": "Top performing segment", "image": "🧰" }
+      ]
+    }
+  }
+}
+```
+
+#### Subscriptions — `range=month`
+```json
+{
+  "success": true,
+  "data": {
+    "kpis": {
+      "monthly_recurring_revenue": { "value": 2250000, "change": 12, "change_type": "increase" },
+      "active_subscriptions": { "value": 9300, "change": 9, "change_type": "increase" },
+      "churn_rate": { "value": 3.1, "change": -0.4, "change_type": "decrease" },
+      "new_signups": { "value": 620, "change": 14, "change_type": "increase" }
+    },
+    "charts": {
+      "revenue_trend": {
+        "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+        "data": [520000, 540000, 560000, 630000]
+      },
+      "category_breakdown": [
+        { "name": "Premium Plus", "value": 36 },
+        { "name": "Premium", "value": 29 },
+        { "name": "Standard", "value": 22 },
+        { "name": "Corporate", "value": 8 },
+        { "name": "Student", "value": 5 }
+      ]
+    },
+    "tables": {
+      "products": [
+        { "id": 1, "name": "Premium Plus Plan", "revenue": 980000, "metric": 1240, "category": "Annual", "image": "🌟" }
+      ],
+      "segments": [
+        { "id": 1, "name": "Premium Subscribers", "revenue": 1700000, "metric": 4360, "description": "High-value members", "image": "🌟" }
+      ]
+    }
+  }
+}
+```
+
+---
+
+### 6. Acceptance Checklist
+
+- [ ] Endpoint returns `200` with the structure above for both views and every range.
+- [ ] `change` and `change_type` accurately compare to the previous period.
+- [ ] Empty datasets degrade gracefully (no `null`, UI-friendly defaults).
+- [ ] Performance is reasonable (consider caching and DB indices).
+- [ ] API docs updated to describe query params and payload.
+
+---
+
+**Questions / Clarifications?** Drop them in the analytics channel before implementation so the frontend can adapt if needed.

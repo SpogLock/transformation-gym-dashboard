@@ -7,7 +7,14 @@ import CardHeader from "components/Card/CardHeader.js";
 import React from "react";
 import ReactApexChart from "react-apexcharts";
 
-const RevenueChart = ({ timePeriod, customDateRange, chartData }) => {
+const RevenueChart = ({
+  timePeriod,
+  customDateRange,
+  chartData,
+  titlePrefix = "Revenue trend",
+  seriesLabel = "Revenue",
+  valueFormatter = (value) => `PKR. ${value.toLocaleString()}`
+}) => {
   const textColor = useColorModeValue("gray.700", "white");
   const gridColor = useColorModeValue("#E2E8F0", "#4A5568");
 
@@ -51,7 +58,7 @@ const RevenueChart = ({ timePeriod, customDateRange, chartData }) => {
 
   const series = [
     {
-      name: "Revenue",
+      name: seriesLabel,
       data: processedData.map(item => item.revenue)
     }
   ];
@@ -144,7 +151,7 @@ const RevenueChart = ({ timePeriod, customDateRange, chartData }) => {
       theme: useColorModeValue("light", "dark"),
       y: {
         formatter: function (value) {
-          return `PKR. ${value.toLocaleString()}`;
+          return valueFormatter(value);
         }
       }
     },
@@ -154,20 +161,24 @@ const RevenueChart = ({ timePeriod, customDateRange, chartData }) => {
   };
 
   // Show empty state if no data
+  const resolvedTitle = `${titlePrefix} ${
+    timePeriod === "Custom date" && customDateRange?.startDate && customDateRange?.endDate
+      ? `${customDateRange.startDate} to ${customDateRange.endDate}`
+      : timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
+  }`;
+
   if (!processedData || processedData.length === 0) {
     return (
       <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
         <CardHeader>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Revenue trend {timePeriod === "Custom date" && customDateRange?.startDate && customDateRange?.endDate 
-              ? `${customDateRange.startDate} to ${customDateRange.endDate}`
-              : timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)}
+            {resolvedTitle}
           </Text>
         </CardHeader>
         <CardBody>
           <Flex h='400px' w='100%' align='center' justify='center' direction='column'>
             <Text fontSize='md' color='gray.400' textAlign='center'>
-              No revenue data available for this period
+              No data available for this period
             </Text>
           </Flex>
         </CardBody>
@@ -179,9 +190,7 @@ const RevenueChart = ({ timePeriod, customDateRange, chartData }) => {
     <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
       <CardHeader>
         <Text fontSize='lg' color={textColor} fontWeight='bold'>
-          Revenue trend {timePeriod === "Custom date" && customDateRange?.startDate && customDateRange?.endDate 
-            ? `${customDateRange.startDate} to ${customDateRange.endDate}`
-            : timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)}
+          {resolvedTitle}
         </Text>
       </CardHeader>
       <CardBody>

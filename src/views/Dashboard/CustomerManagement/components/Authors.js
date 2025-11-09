@@ -25,6 +25,7 @@ import {
   ModalOverlay,
   ModalContent,
   ModalBody,
+  ModalHeader,
   ModalCloseButton,
   Image,
   Tooltip,
@@ -61,6 +62,56 @@ import EmptyState from "components/EmptyState/EmptyState";
 import AppLoader from "components/Loaders/AppLoader";
 
 
+const parseCurrencyInput = (value) => {
+  if (value === undefined || value === null) return null;
+  const numericString = `${value}`.replace(/[^0-9.]/g, '');
+  if (numericString.trim() === '') return null;
+  const parsed = Number.parseFloat(numericString);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
+const parseDateSafe = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const computeFeeStatus = (nextDueDateRaw, lastPaymentDateRaw) => {
+  const today = new Date();
+  const nextDueDate = parseDateSafe(nextDueDateRaw);
+  const lastPaymentDate = parseDateSafe(lastPaymentDateRaw);
+
+  if (lastPaymentDate) {
+    const daysSincePayment = Math.max(0, Math.floor((today - lastPaymentDate) / DAY_IN_MS));
+
+    if (nextDueDate && today > nextDueDate) {
+      const overdueDays = Math.max(1, Math.floor((today - nextDueDate) / DAY_IN_MS));
+      return { status: 'overdue', days: overdueDays, color: 'red' };
+    }
+
+    return { status: 'paid', days: daysSincePayment, color: 'green' };
+  }
+
+  if (nextDueDate) {
+    const diffDays = Math.floor((nextDueDate - today) / DAY_IN_MS);
+
+    if (diffDays < 0) {
+      return { status: 'overdue', days: Math.abs(diffDays), color: 'red' };
+    }
+    if (diffDays === 0) {
+      return { status: 'due_today', days: 0, color: 'orange' };
+    }
+    if (diffDays <= 7) {
+      return { status: 'due_soon', days: diffDays, color: 'yellow' };
+    }
+    return { status: 'upcoming', days: diffDays, color: 'green' };
+  }
+
+  return { status: 'unknown', days: 0, color: 'gray' };
+};
+
 const Authors = ({ title, captions, data }) => {
   const textColor = useColorModeValue("gray.700", "white");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -75,7 +126,14 @@ const Authors = ({ title, captions, data }) => {
   const [hoveredCustomer, setHoveredCustomer] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const history = useHistory();
-  const { searchQuery, filters, updateFilters, clearFilters } = useSearch();
+  const {
+    searchQuery,
+    filters,
+    updateFilters,
+    clearFilters,
+    isFilterOpen,
+    setIsFilterOpen,
+  } = useSearch();
   
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
@@ -129,8 +187,10 @@ const Authors = ({ title, captions, data }) => {
       const apiRoot = API_BASE_URL.replace(/\/$/, '').replace(/\/api\/?$/, '');
       return `${apiRoot}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
     };
+    const nextDueDateRaw = c.next_due_date || c.nextDueDate || '';
+    const lastPaymentDateRaw = c.last_payment_date || c.fee_paid_date || c.feePaidDate || '';
+    const feeStatus = computeFeeStatus(nextDueDateRaw, lastPaymentDateRaw);
     const rawStatus = ((c.status_display || c.status || "") + "").trim();
-    const statusNormalized = rawStatus.toLowerCase();
     const statusDisplay = rawStatus
       ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase()
       : "";
@@ -151,8 +211,10 @@ const Authors = ({ title, captions, data }) => {
       customerAge: c.age ? `${c.age}` : '',
       monthlyFee: c.monthly_fee ? `₨${(Number(c.monthly_fee) > 10000 ? Number(c.monthly_fee) / 100 : Number(c.monthly_fee)).toLocaleString()}` : '',
       registrationFee: c.registration_fee ? `₨${Number(c.registration_fee).toLocaleString()}` : '', // Add registration fee
-      feePaidDate: c.last_payment_date || '',
-      nextDueDate: formatDate(c.next_due_date),
+      feePaidDate: lastPaymentDateRaw,
+      nextDueDate: formatDate(nextDueDateRaw),
+      nextDueDateRaw,
+      feeStatus,
     };
   };
 
@@ -264,6 +326,9 @@ const Authors = ({ title, captions, data }) => {
 
   const handleAddCustomer = async (newCustomer) => {
     // Map UI fields to API payload where possible
+    const monthlyFeeValue = parseCurrencyInput(newCustomer.monthlyFee);
+    const registrationFeeValue = parseCurrencyInput(newCustomer.registrationFee);
+
     const payload = {
       name: newCustomer.memberName,
       email: newCustomer.email,
@@ -278,15 +343,20 @@ const Authors = ({ title, captions, data }) => {
       registration_payment_method: 'cash',
       registration_payment_date: newCustomer.feePaidDate,
       registration_invoice_notes: 'Registration at signup',
-      // keep legacy monetary fields if backend accepts them (harmless)
-      monthly_fee: newCustomer.monthlyFee ? parseInt((newCustomer.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
-      registration_fee: newCustomer.registrationFee ? parseInt((newCustomer.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
       has_trainer: newCustomer.trainerRequired === 'Yes',
       trainer_name: newCustomer.trainerRequired === 'Yes' ? newCustomer.trainerName : undefined,
       // let backend compute payment dates when invoice is generated
       age: newCustomer.customerAge ? parseInt((newCustomer.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
       weight: newCustomer.customerWeight ? parseFloat((newCustomer.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
     };
+
+    if (monthlyFeeValue !== null) {
+      payload.monthly_fee = monthlyFeeValue;
+    }
+
+    if (registrationFeeValue !== null) {
+      payload.registration_fee = registrationFeeValue;
+    }
 
     try {
       await addCustomer(payload, newCustomer._selectedFile);
@@ -317,6 +387,9 @@ const Authors = ({ title, captions, data }) => {
   const handleSaveEdit = async (formData, selectedFile) => {
     if (!editCustomer) return;
     try {
+      const monthlyFeeValue = parseCurrencyInput(formData.monthlyFee);
+      const registrationFeeValue = parseCurrencyInput(formData.registrationFee);
+
       const updatePayload = {
         name: formData.memberName,
         email: formData.email,
@@ -326,13 +399,23 @@ const Authors = ({ title, captions, data }) => {
         status: (formData.membershipStatus || '').toLowerCase(),
         plan_id: formData.plan_id ? parseInt(formData.plan_id) : null, // Send plan_id as integer
         plan: formData.customerPlan ? formData.customerPlan.toLowerCase() : null, // Also send plan name as fallback
-        monthly_fee: formData.monthlyFee ? parseInt((formData.monthlyFee + '').replace(/[^0-9]/g, '')) : undefined,
-        registration_fee: formData.registrationFee ? parseInt((formData.registrationFee + '').replace(/[^0-9]/g, '')) : undefined,
         has_trainer: formData.trainerRequired === 'Yes',
         trainer_name: formData.trainerRequired === 'Yes' ? formData.trainerName : undefined,
         age: formData.customerAge ? parseInt((formData.customerAge + '').replace(/[^0-9]/g, '')) : undefined,
         weight: formData.customerWeight ? parseFloat((formData.customerWeight + '').replace(/[^0-9.]/g, '')) : undefined,
       };
+
+      if (formData.monthlyFee === '') {
+        updatePayload.monthly_fee = null;
+      } else if (monthlyFeeValue !== null) {
+        updatePayload.monthly_fee = monthlyFeeValue;
+      }
+
+      if (formData.registrationFee === '') {
+        updatePayload.registration_fee = null;
+      } else if (registrationFeeValue !== null) {
+        updatePayload.registration_fee = registrationFeeValue;
+      }
       await updateCustomer(editCustomer.id, updatePayload, selectedFile);
       setIsEditOpen(false);
       setEditCustomer(null);
@@ -359,30 +442,6 @@ const Authors = ({ title, captions, data }) => {
   };
 
   // Get days until due or days overdue
-  const getFeeStatus = (nextDueDate, customerId) => {
-    const today = new Date();
-    const dueDate = new Date(nextDueDate);
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Use customer ID to determine if they should be paid (consistent random assignment)
-    const isPaid = (customerId % 3 === 0); // Every 3rd customer is paid
-    
-    if (isPaid) {
-      // For paid customers, show days since last payment (random between 1-30 days ago)
-      const daysAgo = (customerId % 30) + 1; // Consistent based on customer ID
-      return { status: 'paid', days: daysAgo, color: 'green' };
-    } else if (diffDays < 0) {
-      return { status: 'overdue', days: Math.abs(diffDays), color: 'red' };
-    } else if (diffDays === 0) {
-      return { status: 'due_today', days: 0, color: 'orange' };
-    } else if (diffDays <= 7) {
-      return { status: 'due_soon', days: diffDays, color: 'yellow' };
-    } else {
-      return { status: 'paid', days: diffDays, color: 'green' };
-    }
-  };
-
   // Filter and search customers
   const getFilteredCustomers = () => {
     let filteredData = [...stockData];
@@ -415,11 +474,12 @@ const Authors = ({ title, captions, data }) => {
     // Fee status filter
     if (filters.feeStatus) {
       filteredData = filteredData.filter(customer => {
-        const feeStatus = getFeeStatus(customer.nextDueDate, customer.id);
+        const status = customer.feeStatus?.status;
         if (filters.feeStatus === 'overdue') {
-          return feeStatus.status === 'overdue';
-        } else if (filters.feeStatus === 'paid') {
-          return feeStatus.status === 'paid';
+          return status === 'overdue';
+        }
+        if (filters.feeStatus === 'paid') {
+          return status === 'paid';
         }
         return true;
       });
@@ -831,10 +891,7 @@ const Authors = ({ title, captions, data }) => {
                 <MenuItem
                   icon={<SettingsIcon />}
                   position="relative"
-                  onClick={() => {
-                    // Handle filters in a simpler way or open a modal
-                    console.log("Open filters");
-                  }}
+                  onClick={() => setIsFilterOpen(true)}
                 >
                   <HStack justify="space-between" w="full">
                     <Text>Filters</Text>
@@ -876,6 +933,84 @@ const Authors = ({ title, captions, data }) => {
           </Flex>
         </Flex>
       </CardHeader>
+      <Modal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        size="sm"
+        isCentered
+      >
+        <ModalOverlay backdropFilter="blur(4px)" bg="rgba(0,0,0,0.35)" />
+        <ModalContent borderRadius="20px">
+          <ModalHeader color={textColor}>Advanced Filters</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={3} align="stretch">
+              <Input
+                type="date"
+                size="sm"
+                value={filters.dateFrom}
+                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+              />
+              <Input
+                type="date"
+                size="sm"
+                value={filters.dateTo}
+                onChange={(e) => updateFilters({ dateTo: e.target.value })}
+              />
+              <Select
+                placeholder="Month"
+                size="sm"
+                value={filters.month}
+                onChange={(e) => updateFilters({ month: e.target.value })}
+              >
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </Select>
+              <Select
+                placeholder="Year"
+                size="sm"
+                value={filters.year}
+                onChange={(e) => updateFilters({ year: e.target.value })}
+              >
+                {Array.from(new Set(customers
+                  .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
+                  .filter(Boolean)
+                )).sort((a,b)=>b-a).slice(0,8).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </Select>
+            </VStack>
+          </ModalBody>
+          <Flex justify="space-between" align="center" px={6} pb={4}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                clearFilters();
+              }}
+            >
+              Clear filters
+            </Button>
+            <Button
+              colorScheme="brand"
+              size="sm"
+              onClick={() => setIsFilterOpen(false)}
+            >
+              Apply
+            </Button>
+          </Flex>
+        </ModalContent>
+      </Modal>
       <CardBody overflow="visible">
         {loading ? (
           <AppLoader message="Loading customers..." fullHeight />
@@ -1251,6 +1386,9 @@ const Authors = ({ title, captions, data }) => {
                             customerAge={row.customerAge}
                             monthlyFee={row.monthlyFee}
                             nextDueDate={row.nextDueDate}
+                            nextDueDateRaw={row.nextDueDateRaw}
+                            feePaidDate={row.feePaidDate}
+                            feeStatus={row.feeStatus}
                             onMouseEnter={(e) => handleMouseEnter(row, e)}
                             onMouseLeave={handleMouseLeave}
                             onClick={() => handleCustomerClick(row)}

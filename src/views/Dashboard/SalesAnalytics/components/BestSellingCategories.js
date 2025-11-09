@@ -25,9 +25,17 @@ import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import React from "react";
-import logo from "assets/img/avatars/placeholder.png";
 
-const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) => {
+const BestSellingCategories = ({
+  timePeriod,
+  customDateRange,
+  categoryData,
+  title = "Best selling categories list",
+  searchPlaceholder = "Search categories...",
+  metricLabel = "sales",
+  metricColumnTitle = "Sales",
+  metricFormatter = (value) => value
+}) => {
   const textColor = useColorModeValue("gray.700", "white");
   const [searchTerm, setSearchTerm] = React.useState("");
 
@@ -44,14 +52,14 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
         name: item.name || "Unknown Category",
         image: item.image || "🏗️",
         revenue: formatCurrency(item.revenue || 0),
-        sales: item.sales || 0,
+        metric: item.metric ?? item.sales ?? item.subscriptions ?? item.members ?? 0,
         description: `${item.name || "Unknown"} category products`
       }));
     }
 
     // Fallback data if no category data
     return [
-      { id: 1, name: "No Data", image: "❌", revenue: formatCurrency(0), sales: 0, description: "No data available" }
+      { id: 1, name: "No Data", image: "❌", revenue: formatCurrency(0), metric: 0, description: "No data available" }
     ];
   };
 
@@ -74,7 +82,7 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
       <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
         <CardHeader>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Best selling categories list
+            {title}
           </Text>
         </CardHeader>
         <CardBody>
@@ -93,14 +101,14 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
       <CardHeader>
         <VStack align='stretch' spacing='16px'>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Best selling categories list
+            {title}
           </Text>
           <InputGroup>
             <InputLeftElement pointerEvents='none'>
               <FaSearch color='gray.400' />
             </InputLeftElement>
             <Input
-              placeholder='Search categories...'
+              placeholder={searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               bg={useColorModeValue("gray.50", "gray.600")}
@@ -122,7 +130,7 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>#</Th>
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Categories</Th>
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Revenue</Th>
-              <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Sales</Th>
+              <Th color='gray.400' fontSize='sm' fontWeight='semibold'>{metricColumnTitle}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -164,7 +172,7 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
                 </Td>
                 <Td>
                   <Badge colorScheme='teal' fontSize='12px' p='2px 8px' borderRadius='12px'>
-                    {category.sales} sales
+                    {metricFormatter(category.metric)} {metricLabel}
                   </Badge>
                 </Td>
               </Tr>
@@ -208,7 +216,7 @@ const BestSellingCategories = ({ timePeriod, customDateRange, categoryData }) =>
                       {category.revenue}
                     </Text>
                     <Badge colorScheme='teal' fontSize="10px" px={2} py={1} borderRadius="full">
-                      {category.sales} sales
+                      {metricFormatter(category.metric)} {metricLabel}
                     </Badge>
                   </VStack>
                 </Grid>

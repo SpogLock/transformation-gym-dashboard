@@ -28,6 +28,14 @@ import {
   Select,
   Spinner,
   Center,
+  Checkbox,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
 } from "@chakra-ui/react";
 import { SearchIcon, EditIcon, DeleteIcon, ViewIcon, DownloadIcon, EmailIcon, HamburgerIcon, SettingsIcon } from "@chakra-ui/icons";
 import Card from "components/Card/Card.js";
@@ -50,6 +58,11 @@ const InvoicesTable = () => {
   const isTablet = useBreakpointValue({ base: false, md: true, lg: false });
   const history = useHistory();
   const toast = useToast();
+  const {
+    isOpen: filterModalOpen,
+    onOpen: openFilterModal,
+    onClose: closeFilterModal,
+  } = useDisclosure();
 
   // State for data and loading
   const [invoices, setInvoices] = useState([]);
@@ -62,6 +75,20 @@ const InvoicesTable = () => {
   const [paymentFilter, setPaymentFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [showGuestOnly, setShowGuestOnly] = useState(false);
+  const hasActiveFilters = Boolean(
+    statusFilter || paymentFilter || dateFilter || showGuestOnly
+  );
+  const getFilterCount = () =>
+    [statusFilter, paymentFilter, dateFilter, showGuestOnly ? "guest" : ""].filter(
+      Boolean
+    ).length;
+
+  const clearInvoiceFilters = () => {
+    setStatusFilter("");
+    setPaymentFilter("");
+    setDateFilter("");
+    setShowGuestOnly(false);
+  };
 
   // Load invoices from API
   const loadInvoices = useCallback(async () => {
@@ -363,9 +390,21 @@ const InvoicesTable = () => {
                 Actions
               </MenuButton>
               <MenuList>
-                <MenuItem icon={<SettingsIcon />}>
+                <MenuItem icon={<SettingsIcon />} onClick={openFilterModal}>
                   <HStack justify="space-between" w="full">
                     <Text>Advanced Filters</Text>
+                    {hasActiveFilters && (
+                      <Badge
+                        colorScheme="red"
+                        borderRadius="full"
+                        fontSize="8px"
+                        minW="12px"
+                        h="12px"
+                        ml="auto"
+                      >
+                        {getFilterCount()}
+                      </Badge>
+                    )}
                   </HStack>
                 </MenuItem>
                 <MenuItem icon={<DownloadIcon />}>Export CSV</MenuItem>
@@ -374,6 +413,69 @@ const InvoicesTable = () => {
           </Flex>
         </Flex>
       </CardHeader>
+      <Modal isOpen={filterModalOpen} onClose={closeFilterModal} isCentered size="sm">
+        <ModalOverlay backdropFilter="blur(4px)" bg="rgba(0,0,0,0.35)" />
+        <ModalContent borderRadius="20px">
+          <ModalHeader color={textColor}>Advanced Filters</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={3} align="stretch">
+              <Select
+                size="sm"
+                placeholder="All Status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="overdue">Overdue</option>
+                <option value="cancelled">Cancelled</option>
+              </Select>
+              <Select
+                size="sm"
+                placeholder="All Payment Methods"
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="digital_wallet">Digital Wallet</option>
+              </Select>
+              <Input
+                type="date"
+                size="sm"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+              <Checkbox
+                isChecked={showGuestOnly}
+                onChange={(e) => setShowGuestOnly(e.target.checked)}
+              >
+                Show guest invoices only
+              </Checkbox>
+            </VStack>
+          </ModalBody>
+          <ModalFooter gap={3}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                clearInvoiceFilters();
+              }}
+            >
+              Clear
+            </Button>
+            <Button
+              colorScheme="brand"
+              size="sm"
+              onClick={closeFilterModal}
+            >
+              Apply
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
       
       <CardBody overflow="visible">
         {/* Show empty state if no invoices */}

@@ -324,9 +324,9 @@ const ProductProfile = () => {
   };
 
   const getStockStatus = (quantity) => {
-    if (quantity < 10) {
+    if (quantity <= 3) {
       return { status: 'Low Stock', color: 'red' };
-    } else if (quantity <= 30) {
+    } else if (quantity <= 10) {
       return { status: 'Medium Stock', color: 'yellow' };
     } else {
       return { status: 'High Stock', color: 'green' };

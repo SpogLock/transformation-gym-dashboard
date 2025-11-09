@@ -25,6 +25,7 @@ import {
   ModalOverlay,
   ModalContent,
   ModalBody,
+  ModalHeader,
   ModalCloseButton,
   Image,
   Tooltip,
@@ -69,7 +70,14 @@ const InventoryTable = ({ title }) => {
   const [hoveredProduct, setHoveredProduct] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const history = useHistory();
-  const { searchQuery, filters, updateFilters, clearFilters } = useSearch();
+  const {
+    searchQuery,
+    filters,
+    updateFilters,
+    clearFilters,
+    isFilterOpen,
+    setIsFilterOpen,
+  } = useSearch();
   const toast = useToast();
   
   // Product context
@@ -84,6 +92,15 @@ const InventoryTable = ({ title }) => {
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
+
+  const categoryOptions = React.useMemo(() => {
+    const unique = new Set(
+      (products || []).map((p) => p.category).filter((value) => Boolean(value))
+    );
+    return Array.from(unique).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+  }, [products]);
 
   // Get filter count for badge
   const getFilterCount = () => {
@@ -122,9 +139,9 @@ const InventoryTable = ({ title }) => {
 
   // Check stock status
   const getStockStatus = (quantity) => {
-    if (quantity < 10) {
+    if (quantity <= 3) {
       return { status: 'low', color: 'red' };
-    } else if (quantity <= 30) {
+    } else if (quantity <= 10) {
       return { status: 'medium', color: 'yellow' };
     } else {
       return { status: 'high', color: 'green' };
@@ -369,10 +386,7 @@ const InventoryTable = ({ title }) => {
                 <MenuItem
                   icon={<SettingsIcon />}
                   position="relative"
-                  onClick={() => {
-                    // Handle filters in a simpler way or open a modal
-                    console.log("Open filters");
-                  }}
+                  onClick={() => setIsFilterOpen(true)}
                 >
                   <HStack justify="space-between" w="full">
                     <Text>Filters</Text>
@@ -418,6 +432,60 @@ const InventoryTable = ({ title }) => {
           </Flex>
         </Flex>
       </CardHeader>
+      <Modal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        size="sm"
+        isCentered
+      >
+        <ModalOverlay backdropFilter="blur(4px)" bg="rgba(0,0,0,0.35)" />
+        <ModalContent borderRadius="20px">
+          <ModalHeader color={textColor}>Inventory Filters</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={3} align="stretch">
+              <Select
+                placeholder="All categories"
+                size="sm"
+                value={filters.category || ''}
+                onChange={(e) => updateFilters({ category: e.target.value })}
+              >
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                placeholder="Stock status"
+                size="sm"
+                value={filters.stockStatus || ''}
+                onChange={(e) => updateFilters({ stockStatus: e.target.value })}
+              >
+                <option value="low">Low (≤ 3)</option>
+                <option value="medium">Medium (4 - 10)</option>
+                <option value="high">High (&gt; 10)</option>
+              </Select>
+            </VStack>
+          </ModalBody>
+          <Flex justify="space-between" align="center" px={6} pb={4}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => clearFilters()}
+            >
+              Clear filters
+            </Button>
+            <Button
+              colorScheme="brand"
+              size="sm"
+              onClick={() => setIsFilterOpen(false)}
+            >
+              Apply
+            </Button>
+          </Flex>
+        </ModalContent>
+      </Modal>
       
       <CardBody>
         {isMobile ? (

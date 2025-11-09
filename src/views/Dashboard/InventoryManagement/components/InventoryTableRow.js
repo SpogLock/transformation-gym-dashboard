@@ -52,9 +52,9 @@ function InventoryTableRow(props) {
 
   // Check stock status
   const getStockStatus = (quantity) => {
-    if (quantity < 10) {
+    if (quantity <= 3) {
       return { status: 'low', color: 'red' };
-    } else if (quantity <= 30) {
+    } else if (quantity <= 10) {
       return { status: 'medium', color: 'yellow' };
     } else {
       return { status: 'high', color: 'green' };

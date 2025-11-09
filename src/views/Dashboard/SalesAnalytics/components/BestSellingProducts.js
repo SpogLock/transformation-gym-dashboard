@@ -18,7 +18,6 @@ import {
   Box,
   HStack,
   Grid,
-  Icon,
 } from "@chakra-ui/react";
 import { FaSearch } from "react-icons/fa";
 // Custom components
@@ -26,9 +25,17 @@ import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import React from "react";
-import logo from "assets/img/avatars/placeholder.png";
 
-const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
+const BestSellingProducts = ({
+  timePeriod,
+  customDateRange,
+  productsData,
+  title = "Best selling products list",
+  searchPlaceholder = "Search products or categories...",
+  metricLabel = "sales",
+  metricColumnTitle = "Sales",
+  metricFormatter = (value) => value
+}) => {
   const textColor = useColorModeValue("gray.700", "white");
   const [searchTerm, setSearchTerm] = React.useState("");
 
@@ -45,7 +52,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
         name: item.name || "Unknown Product",
         image: item.image || "🔧",
         revenue: formatCurrency(item.revenue || 0),
-        sales: item.sales || 0,
+        metric: item.metric ?? item.sales ?? item.subscriptions ?? item.members ?? 0,
         category: item.category || "Uncategorized",
         rank: index + 1
       }));
@@ -53,7 +60,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
 
     // Fallback data if no products data
     return [
-      { id: 1, name: "No Data", image: "❌", revenue: formatCurrency(0), sales: 0, category: "N/A", rank: 1 }
+      { id: 1, name: "No Data", image: "❌", revenue: formatCurrency(0), metric: 0, category: "N/A", rank: 1 }
     ];
   };
 
@@ -75,7 +82,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
       <Card bg={useColorModeValue("white", "gray.700")} boxShadow={useColorModeValue("0 4px 20px rgba(0,0,0,0.06)", "0 4px 20px rgba(0,0,0,0.3)")}>
         <CardHeader>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Best selling products list
+            {title}
           </Text>
         </CardHeader>
         <CardBody>
@@ -94,14 +101,14 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
       <CardHeader>
         <VStack align='stretch' spacing='16px'>
           <Text fontSize='lg' color={textColor} fontWeight='bold'>
-            Best selling products list
+            {title}
           </Text>
           <InputGroup>
             <InputLeftElement pointerEvents='none'>
               <FaSearch color='gray.400' />
             </InputLeftElement>
             <Input
-              placeholder='Search products or categories...'
+              placeholder={searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               bg={useColorModeValue("gray.50", "gray.600")}
@@ -123,7 +130,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>#</Th>
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Products</Th>
               <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Revenue</Th>
-              <Th color='gray.400' fontSize='sm' fontWeight='semibold'>Sales</Th>
+              <Th color='gray.400' fontSize='sm' fontWeight='semibold'>{metricColumnTitle}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -165,7 +172,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
                 </Td>
                 <Td>
                   <Badge colorScheme='teal' fontSize='12px' p='2px 8px' borderRadius='12px'>
-                    {product.sales} sales
+                    {metricFormatter(product.metric)} {metricLabel}
                   </Badge>
                 </Td>
               </Tr>
@@ -209,7 +216,7 @@ const BestSellingProducts = ({ timePeriod, customDateRange, productsData }) => {
                       {product.revenue}
                     </Text>
                     <Badge colorScheme='teal' fontSize="10px" px={2} py={1} borderRadius="full">
-                      {product.sales} sales
+                      {metricFormatter(product.metric)} {metricLabel}
                     </Badge>
                   </VStack>
                 </Grid>
