@@ -42,7 +42,31 @@ const apiFetch = async (endpoint, options = {}) => {
     if (!response.ok) {
       // Handle HTTP errors
       const validation = data && data.errors ? ` (${Object.values(data.errors).flat().join('; ')})` : '';
-      throw new Error((data && data.message ? data.message : `HTTP error! status: ${response.status}`) + validation);
+      const message = (data && data.message ? data.message : `HTTP error! status: ${response.status}`) + validation;
+
+      // Centralised 401 / unauthenticated handling
+      if (response.status === 401 && !options.skipAuth) {
+        try {
+          // Clear any stale auth data
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user');
+        } catch (e) {
+          // no-op
+        }
+
+        // Redirect to sign-in if we're not already there
+        if (typeof window !== 'undefined') {
+          const signInHash = '#/auth/signin';
+          if (window.location.hash !== signInHash) {
+            window.location.hash = signInHash;
+          }
+        }
+      }
+
+      const error = new Error(message);
+      // Preserve status code for callers that care
+      error.status = response.status;
+      throw error;
     }
 
     return data;

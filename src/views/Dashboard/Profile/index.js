@@ -117,6 +117,9 @@ function Profile() {
 
       const updatePayload = {
         name: formData.memberName,
+        trainer_name: formData.trainerRequired === 'Yes'
+          ? (formData.trainerName || '').trim()
+          : null,
         email: formData.email,
         mobile_number: formData.mobileNo,
         address: formData.address,

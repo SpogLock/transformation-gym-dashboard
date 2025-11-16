@@ -1,17 +1,35 @@
 import apiFetch, { API_BASE_URL } from './api';
 
-// Submit a fee payment and generate an invoice
-export const submitFee = async ({ customer_id, fee_type, amount, payment_date, payment_method, notes }) => {
-  const payload = {
-    customer_id,
-    fee_type,
-    amount: typeof amount === 'number' ? amount : Number(String(amount).replace(/[^0-9.]/g, '')),
-    payment_date,
-    payment_method,
-    notes: notes || ''
-  };
-  const data = await apiFetch('/fee-submissions/submit', { method: 'POST', body: payload });
-  if (data.success) return data.data; // { fee_submission, customer, invoice }
+// Submit a fee payment and generate invoices (billing-period based)
+// NOTE:
+// - For monthly fees, do NOT send `amount` from the frontend anymore.
+// - Instead, pass an array of `billing_period_ids` and let the backend compute amounts.
+// - Other fee types (e.g. registration) can still send their own payloads as needed.
+export const submitFee = async (payload) => {
+  const data = await apiFetch('/fee-submissions/submit', {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (data.success) {
+    // New API returns collections instead of single records for billing-period payments
+    // Shape (simplified):
+    // {
+    //   fee_submissions: [...],
+    //   invoices: [...],
+    //   billing_periods: [...],
+    //   customer: {...}
+    // }
+    return data.data;
+  }
+
+  // Try to surface validation / business rule errors clearly
+  if (data.errors) {
+    const firstErrorKey = Object.keys(data.errors)[0];
+    const firstErrorMessage = data.errors[firstErrorKey]?.[0];
+    throw new Error(firstErrorMessage || data.message || 'Failed to submit fee');
+  }
+
   throw new Error(data.message || 'Failed to submit fee');
 };
 

@@ -20,8 +20,6 @@ import {
   Stat,
   StatLabel,
   StatNumber,
-  StatHelpText,
-  StatArrow,
   useToast,
 } from "@chakra-ui/react";
 import { 
@@ -40,8 +38,8 @@ import CardHeader from "components/Card/CardHeader";
 import React, { useEffect, useMemo, useState } from "react";
 import AppLoader from "components/Loaders/AppLoader";
 import { getCustomerFeeStatus, getCustomerFeeHistory, submitFee, printInvoice, downloadInvoice } from "services/feeService";
-import { forceMarkOverdueFees, getCustomerMonthlyTracking } from "services/overdueService";
-import { sendPaymentReminder, getCustomer as fetchCustomerDetail } from "services/customerService";
+import { forceMarkOverdueFees, getCustomerMonthlyTracking, getCustomerBillingPeriods } from "services/overdueService";
+import { sendPaymentReminder, getCustomer as fetchCustomerDetail, createPriceOverride } from "services/customerService";
 
 const PaymentInfo = ({ customer }) => {
   // Chakra color mode
@@ -79,24 +77,36 @@ const PaymentInfo = ({ customer }) => {
   const [submitting, setSubmitting] = useState(false);
   const [feeStatus, setFeeStatus] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
-  const [monthlyTracking, setMonthlyTracking] = useState([]);
+  const [monthlyTracking, setMonthlyTracking] = useState([]); // legacy view
+  const [billingPeriods, setBillingPeriods] = useState([]);   // canonical periods for payments
+  const [selectedPeriodIds, setSelectedPeriodIds] = useState([]);
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({
+    amount: "",
+    reason: "",
+  });
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setLoading(true);
       try {
-        const [status, history] = await Promise.all([
+        const [status, history, tracking, periods] = await Promise.all([
           getCustomerFeeStatus(customer.id),
-          getCustomerFeeHistory(customer.id)
+          getCustomerFeeHistory(customer.id),
+          getCustomerMonthlyTracking(customer.id),
+          getCustomerBillingPeriods(customer.id),
         ]);
         if (!mounted) return;
         setFeeStatus(status);
         setHistoryItems(history.items);
+        setMonthlyTracking(Array.isArray(tracking?.monthly_tracking) ? tracking.monthly_tracking : []);
+        setBillingPeriods(Array.isArray(periods?.billing_periods) ? periods.billing_periods : []);
       } catch (_) {
         if (!mounted) return;
         setFeeStatus(null);
         setHistoryItems([]);
+        setMonthlyTracking([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -139,43 +149,99 @@ const PaymentInfo = ({ customer }) => {
 
   const handleMarkAsPaid = async () => {
     if (!customer?.id) return;
+
+    // Determine which billing periods to pay (from canonical billing periods):
+    // - Prefer user's explicit selection.
+    // - Otherwise, default to earliest pending/overdue period.
+    const selectable = Array.isArray(billingPeriods)
+      ? billingPeriods.filter((rec) =>
+          ["pending", "overdue"].includes(String(rec.status || "").toLowerCase())
+        )
+      : [];
+
+    let billingPeriodIds = selectedPeriodIds;
+    if (!billingPeriodIds.length && selectable.length) {
+      const earliest = [...selectable].sort(
+        (a, b) => new Date(a.due_date) - new Date(b.due_date)
+      )[0];
+      if (earliest?.id) {
+        billingPeriodIds = [earliest.id];
+      }
+    }
+
+    if (!billingPeriodIds.length) {
+      toast({
+        title: "No months selected",
+        description: "Select at least one billing period to record a payment.",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+        position: "top-right",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const todayIso = new Date().toISOString().slice(0, 10);
+      const idempotencyKey = `fee_${customer.id}_${Date.now()}`;
+
       const result = await submitFee({
         customer_id: customer.id,
-        fee_type: 'monthly_fee',
-        amount: Number(String(feeStatus?.monthly_fee || '').replace(/[^0-9.]/g, '')) || undefined,
         payment_date: todayIso,
-        payment_method: 'cash',
-        notes: 'Monthly fee payment from profile'
+        payment_method: "cash",
+        billing_period_ids: billingPeriodIds,
+        idempotency_key: idempotencyKey,
+        notes: "Monthly fee payment from profile",
       });
-      const [status, history] = await Promise.all([
+
+      const [status, history, periods] = await Promise.all([
         getCustomerFeeStatus(customer.id),
-        getCustomerFeeHistory(customer.id)
+        getCustomerFeeHistory(customer.id),
+        getCustomerBillingPeriods(customer.id),
       ]);
       setFeeStatus(status);
       setHistoryItems(history.items);
+      setBillingPeriods(
+        Array.isArray(periods?.billing_periods)
+          ? periods.billing_periods
+          : []
+      );
+      setSelectedPeriodIds([]);
+
+      const primaryInvoice =
+        Array.isArray(result?.invoices) && result.invoices.length
+          ? result.invoices[0]
+          : result?.invoice;
+
       toast({
-        title: 'Payment processed',
-        description: (result && result.message) || 'Monthly fee recorded successfully.',
-        status: 'success',
+        title: "Payment processed",
+        description:
+          (result && result.message) ||
+          "Monthly fee recorded successfully for the selected period(s).",
+        status: "success",
         duration: 2500,
         isClosable: true,
-        position: 'top-right'
+        position: "top-right",
       });
-      if (result?.invoice?.id) {
-        try { await printInvoice(result.invoice.id); } catch (_) {}
+
+      if (primaryInvoice?.id) {
+        try {
+          await printInvoice(primaryInvoice.id);
+        } catch (_) {}
       }
     } catch (e) {
-      const message = (e && e.message) ? e.message : 'Payment could not be processed';
+      const message =
+        e && e.message
+          ? e.message
+          : "Payment could not be processed. Please try again.";
       toast({
-        title: 'Payment not processed',
+        title: "Payment not processed",
         description: message,
-        status: 'info',
+        status: "info",
         duration: 3500,
         isClosable: true,
-        position: 'top-right'
+        position: "top-right",
       });
     } finally {
       setSubmitting(false);
@@ -298,6 +364,86 @@ const PaymentInfo = ({ customer }) => {
     if (customer?.id) loadInvoicesFromDetail();
     return () => { mounted = false; };
   }, [customer?.id]);
+
+  const selectablePeriods = useMemo(() => {
+    if (!Array.isArray(billingPeriods)) return [];
+    return billingPeriods.filter((rec) =>
+      ["pending", "overdue"].includes(String(rec.status || "").toLowerCase())
+    );
+  }, [billingPeriods]);
+
+  const handleTogglePeriod = (periodId) => {
+    setSelectedPeriodIds((prev) =>
+      prev.includes(periodId)
+        ? prev.filter((id) => id !== periodId)
+        : [...prev, periodId]
+    );
+  };
+
+  const handleSelectAllPeriods = () => {
+    if (!selectablePeriods.length) return;
+    const allIds = selectablePeriods.map((p) => p.id);
+    const allSelected =
+      allIds.length &&
+      allIds.every((id) => selectedPeriodIds.includes(id));
+    setSelectedPeriodIds(allSelected ? [] : allIds);
+  };
+
+  const handleOverrideSubmit = async () => {
+    if (!customer?.id) return;
+    const numericAmount = Number(overrideForm.amount);
+    if (!numericAmount || numericAmount <= 0) {
+      toast({
+        title: "Enter a valid amount",
+        description: "Please enter a positive monthly fee amount.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "top-right",
+      });
+      return;
+    }
+
+    const overridden_price_cents = Math.round(numericAmount * 100);
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    setOverrideSubmitting(true);
+    try {
+      await createPriceOverride(customer.id, {
+        plan_id: null,
+        overridden_price_cents,
+        effective_from: todayIso,
+        effective_to: null,
+        reason: overrideForm.reason || "Custom monthly price",
+      });
+
+      toast({
+        title: "Price override saved",
+        description:
+          "Future billing periods will use this custom monthly price.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "top-right",
+      });
+      setOverrideForm({ amount: "", reason: "" });
+    } catch (e) {
+      const message =
+        e && e.message
+          ? e.message
+          : "Could not save price override. Please try again.";
+      toast({
+        title: "Price override failed",
+        description: message,
+        status: "error",
+        duration: 3500,
+        isClosable: true,
+        position: "top-right",
+      });
+    } finally {
+      setOverrideSubmitting(false);
+    }
+  };
 
   if (loading) {
     return <AppLoader message="Loading payment info..." />;
@@ -501,6 +647,118 @@ const PaymentInfo = ({ customer }) => {
             </Button>
           </HStack>
         </VStack>
+
+        {/* Billing Period Selection */}
+        <Box mt={4}>
+          <Text fontSize="sm" color={textColor} fontWeight="semibold" mb={2}>
+            Select billing months to pay
+          </Text>
+          {selectablePeriods.length === 0 ? (
+            <Box
+              p={3}
+              bg={useColorModeValue("gray.50", "gray.700")}
+              borderRadius="md"
+              border="1px solid"
+              borderColor={borderColor}
+            >
+              <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.300")}>
+                There are no pending or overdue billing periods. You&rsquo;re all caught up!
+              </Text>
+            </Box>
+          ) : (
+            <VStack align="stretch" spacing={2}>
+              <HStack justify="space-between">
+                <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")}>
+                  Tap to select one or multiple months (for catch-up or prepayment).
+                </Text>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={handleSelectAllPeriods}
+                >
+                  {selectablePeriods.every((p) =>
+                    selectedPeriodIds.includes(p.id)
+                  )
+                    ? "Clear selection"
+                    : "Select all"}
+                </Button>
+              </HStack>
+
+              {selectablePeriods.map((rec) => {
+                const isSelected = selectedPeriodIds.includes(rec.id);
+                const statusLower = String(rec.status || "").toLowerCase();
+                const isOverdue = statusLower === "overdue";
+                const badgeColor = isOverdue ? "red" : "yellow";
+
+                return (
+                  <Box
+                    key={rec.id}
+                    p={3}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor={isSelected ? "brand.500" : borderColor}
+                    bg={
+                      isSelected
+                        ? useColorModeValue("brand.50", "gray.700")
+                        : useColorModeValue("gray.50", "gray.700")
+                    }
+                    cursor="pointer"
+                    onClick={() => handleTogglePeriod(rec.id)}
+                  >
+                    <HStack justify="space-between" align="flex-start">
+                      <VStack align="start" spacing={0}>
+                        <Text
+                          fontSize="sm"
+                          fontWeight="semibold"
+                          color={textColor}
+                        >
+                          {formatPrettyDate(rec.due_date)}
+                        </Text>
+                        <Text
+                          fontSize="xs"
+                          color={useColorModeValue("gray.500", "gray.400")}
+                        >
+                          Amount: ₨
+                          {Number(
+                            rec.amount_cents != null
+                              ? rec.amount_cents / 100
+                              : rec.amount
+                          ).toLocaleString()}
+                        </Text>
+                      </VStack>
+                      <VStack align="end" spacing={1}>
+                        <Badge
+                          colorScheme={badgeColor}
+                          variant="subtle"
+                          borderRadius="full"
+                          px={2}
+                          py={1}
+                          fontSize="xs"
+                        >
+                          {isOverdue
+                            ? `Overdue${rec.days_overdue ? ` (${rec.days_overdue} days)` : ""}`
+                            : "Pending"}
+                        </Badge>
+                        {isSelected && (
+                          <Badge
+                            colorScheme="green"
+                            variant="solid"
+                            borderRadius="full"
+                            px={2}
+                            py={1}
+                            fontSize="xs"
+                          >
+                            Selected
+                          </Badge>
+                        )}
+                      </VStack>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </VStack>
+          )}
+        </Box>
       </Box>
 
       {/* Monthly Tracking */}
@@ -534,7 +792,7 @@ const PaymentInfo = ({ customer }) => {
                     </VStack>
                     <VStack align="start" spacing={0}>
                       <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="medium">Status</Text>
-                      <Text fontSize="sm" color={textColor} fontWeight="semibold">{rec.status}</Text>
+                        <Text fontSize="sm" color={textColor} fontWeight="semibold">{rec.status}</Text>
                     </VStack>
                   </Grid>
                 </Box>
@@ -689,6 +947,86 @@ const PaymentInfo = ({ customer }) => {
             </Text>
             <Button size="xs" variant="outline" ml="auto" onClick={() => handleRefreshOverdue?.()}>Refresh Overdue</Button>
           </HStack>
+
+          {/* Price Override (Custom Monthly Price) */}
+          <Box mt={4} p={3} borderRadius="md" border="1px dashed" borderColor={borderColor}>
+            <VStack align="stretch" spacing={3}>
+              <Text fontSize="sm" color={textColor} fontWeight="semibold">
+                Custom monthly price / discount
+              </Text>
+              <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")}>
+                Use this when you want to lock in a special price for this customer.
+                The backend will apply it automatically to future billing periods.
+              </Text>
+              <Grid
+                templateColumns={{ base: "1fr", md: "200px 1fr auto" }}
+                gap={3}
+                alignItems="center"
+              >
+                <Box>
+                  <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                    Monthly amount (PKR)
+                  </Text>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: "8px",
+                      border: `1px solid ${borderColor}`,
+                      background: "transparent",
+                      color: "inherit",
+                    }}
+                    value={overrideForm.amount}
+                    onChange={(e) =>
+                      setOverrideForm((prev) => ({
+                        ...prev,
+                        amount: e.target.value,
+                      }))
+                    }
+                  />
+                </Box>
+
+                <Box>
+                  <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                    Reason (optional)
+                  </Text>
+                  <input
+                    type="text"
+                    placeholder="e.g. Loyalty discount"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: "8px",
+                      border: `1px solid ${borderColor}`,
+                      background: "transparent",
+                      color: "inherit",
+                    }}
+                    value={overrideForm.reason}
+                    onChange={(e) =>
+                      setOverrideForm((prev) => ({
+                        ...prev,
+                        reason: e.target.value,
+                      }))
+                    }
+                  />
+                </Box>
+
+                <Box textAlign={{ base: "right", md: "left" }} mt={{ base: 2, md: 0 }}>
+                  <Button
+                    size="sm"
+                    colorScheme="teal"
+                    isLoading={overrideSubmitting}
+                    onClick={handleOverrideSubmit}
+                  >
+                    Save override
+                  </Button>
+                </Box>
+              </Grid>
+            </VStack>
+          </Box>
 
           <VStack spacing={3} align="stretch">
             {invoiceRows.length === 0 ? (

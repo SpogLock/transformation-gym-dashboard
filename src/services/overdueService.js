@@ -24,4 +24,23 @@ export const getCustomerMonthlyTracking = async (customerId) => {
   throw new Error(data.message || 'Failed to load monthly tracking');
 };
 
+// New billing-period-based schedule for a customer
+// Expected shape (example):
+// {
+//   success: true,
+//   data: {
+//     customer: {...},
+//     billing_periods: [
+//       { id, billing_date, due_date, amount_cents, status, paid_at, days_overdue }
+//     ]
+//   }
+// }
+export const getCustomerBillingPeriods = async (customerId) => {
+  const data = await apiFetch(`/customers/${customerId}/billing-periods`, {
+    method: 'GET',
+  });
+  if (data.success) return data.data;
+  throw new Error(data.message || 'Failed to load billing periods');
+};
+
 

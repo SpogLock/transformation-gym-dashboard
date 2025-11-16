@@ -116,6 +116,20 @@ export const sendPaymentReminder = async (customerId) => {
   throw new Error(data.message || 'Failed to send reminder');
 };
 
+// Create a price override (discount / custom monthly price) for a customer
+export const createPriceOverride = async (customerId, overrideData) => {
+  const data = await apiFetch(`/customers/${customerId}/price-override`, {
+    method: 'POST',
+    body: overrideData,
+  });
+
+  if (data.success) {
+    return data.data.override;
+  }
+
+  throw new Error(data.message || 'Failed to create price override');
+};
+
 // Upload customer profile picture (multipart/form-data)
 export const uploadCustomerProfilePicture = async (customerId, imageFile) => {
   const formData = new FormData();
@@ -154,5 +168,4 @@ export const getCustomerProfilePicture = async (customerId) => {
   }
   return null;
 };
-
 

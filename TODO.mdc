@@ -1,0 +1,442 @@
+## Billing System — MDC for Frontend Integration
+
+> **Purpose:** This MDC summarizes how the new billing-period-based billing system works from the frontend’s perspective: concepts, APIs, payloads, and recommended UX flows. It assumes the backend changes from `TODO.mdc` are implemented.
+
+---
+
+## 1) Core Concepts (Frontend Mental Model)
+
+### BillingPeriod
+
+Canonical unit you pay for (one month/period per customer). Backed by the `billing_periods` table.
+
+- `id`: integer
+- `customer_id`: integer
+- `period_start_date`: date
+- `period_end_date`: date
+- `billing_date`: date — logical month anchor (e.g. `2025-12-10`)
+- `due_date`: date — what staff sees as “due on …”
+- `amount_cents`: integer — **server-computed** final price for that period (plan + overrides)
+- `status`: enum — `"pending" | "paid" | "overdue" | "cancelled"`
+- `paid_at`: datetime|null
+- `paid_amount_cents`: integer|null
+- `payment_submission_id`: fee submission FK
+- `invoice_id`: invoice FK
+- `days_overdue`: integer
+
+### Pricing (high level)
+
+- Frontend **never** computes amounts for monthly fees.
+- Backend uses:
+  - `customer_plan_assignments` (plan over time),
+  - `plan_prices` (plan price history),
+  - `customer_price_overrides` (per-customer overrides/discounts),
+- to set `billing_period.amount_cents` at creation time.
+
+### Customer Summary (existing fields, new semantics)
+
+- `next_due_date`: earliest unpaid `billing_period.due_date` (or `null` if fully paid).
+- `subscription_status`, `last_payment_date`, `overdue_days` remain, but are now driven by billing-period state.
+
+---
+
+## 2) Payment Submission API (Monthly Fees)
+
+### Endpoint
+
+- `POST /api/fee-submissions/submit`
+
+This endpoint now uses **billing periods** instead of a free-form `amount` + inferred month.
+
+### Request (canonical)
+
+```json
+{
+  "customer_id": 1,
+  "payment_date": "2025-12-10",
+  "payment_method": "cash",
+  "billing_period_ids": [1001, 1002],
+  "idempotency_key": "txn_customer1_2025_12",
+  "notes": "Dec + Jan payment"
+}
+```
+
+#### Fields
+
+- `customer_id` (required): existing customer id.
+- `payment_date` (optional): ISO date; defaults to now if omitted.
+- `payment_method` (required): one of:
+  - `"cash"`, `"card"`, `"bank_transfer"`, `"digital_wallet"`.
+- `billing_period_ids` (required for now):
+  - Array of `BillingPeriod.id` values to pay in this submission.
+  - Use cases:
+    - Single period: regular monthly fee.
+    - Multiple periods: prepayment or paying overdue months in bulk.
+    - Future periods: explicit prepayment (e.g., pay December now).
+- `idempotency_key` (optional but strongly recommended):
+  - Unique per UI button click, e.g. `"fee_${customerId}_${Date.now()}"`.
+  - Protects against double-charges on retries/double-clicks.
+- `notes` (optional): free-text note stored on the fee submission / invoice.
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Fee submitted successfully",
+  "data": {
+    "fee_submissions": [
+      {
+        "id": 10,
+        "customer_id": 1,
+        "billing_period_id": 1001,
+        "invoice_id": 55,
+        "fee_type": "monthly_fee",
+        "amount": "4500.00",
+        "payment_date": "2025-12-10",
+        "payment_method": "cash",
+        "notes": "Dec + Jan payment",
+        "idempotency_key": "txn_customer1_2025_12"
+      }
+      // ... one per billing period
+    ],
+    "invoices": [
+      {
+        "id": 55,
+        "customer_id": 1,
+        "fee_submission_id": 10,
+        "invoice_number": "INV-20251210-0001",
+        "subtotal": "4500.00",
+        "tax_amount": "0.00",
+        "discount_amount": "0.00",
+        "total_amount": "4500.00",
+        "payment_status": "paid",
+        "payment_method": "cash",
+        "due_date": "2025-12-10"
+      }
+      // ...
+    ],
+    "billing_periods": [
+      {
+        "id": 1001,
+        "customer_id": 1,
+        "billing_date": "2025-12-10",
+        "due_date": "2025-12-10",
+        "amount_cents": 450000,
+        "status": "paid",
+        "paid_at": "2025-12-10T10:00:00Z",
+        "paid_amount_cents": 450000,
+        "days_overdue": 0,
+        "payment_submission_id": 10,
+        "invoice_id": 55
+      }
+      // ...
+    ],
+    "customer": {
+      "id": 1,
+      "subscription_status": "paid",
+      "next_due_date": "2026-01-10",
+      "last_payment_date": "2025-12-10",
+      "overdue_days": 0
+    }
+  }
+}
+```
+
+### Error Responses
+
+#### Validation error
+
+Example:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "payment_method": ["The payment method field is required."]
+  }
+}
+```
+
+#### Business rule error
+
+Example (trying to pay a period that is already paid/cancelled):
+
+```json
+{
+  "success": false,
+  "message": "Billing period 1001 is already paid."
+}
+```
+
+#### Idempotency repeat
+
+If a previous request with the same `idempotency_key` already succeeded, the backend returns the **existing** submission/invoice/customer data instead of creating new rows. Shape is the same as the success response above.
+
+---
+
+## 3) Price Overrides (Discounts / Custom Monthly Price)
+
+### Endpoint
+
+- `POST /api/customers/{customer}/price-override`
+
+### Request
+
+```json
+{
+  "plan_id": 3,
+  "overridden_price_cents": 380000,
+  "effective_from": "2025-12-01",
+  "effective_to": null,
+  "reason": "Loyalty discount"
+}
+```
+
+#### Fields
+
+- `plan_id` (optional):
+  - If provided, override applies only when that plan is active for the customer.
+  - If omitted/`null`, override applies regardless of specific plan (generic per-customer price).
+- `overridden_price_cents` (required): integer, price in cents (e.g. `380000` → `3800.00`).
+- `effective_from` (required): date from which override should start.
+- `effective_to` (optional): date until which override is valid (`null` = open-ended).
+- `reason` (optional): human-readable reason; should be displayed in UI for auditability.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Price override created successfully",
+  "data": {
+    "override": {
+      "id": 5,
+      "customer_id": 1,
+      "plan_id": 3,
+      "overridden_price_cents": 380000,
+      "effective_from": "2025-12-01",
+      "effective_to": null,
+      "reason": "Loyalty discount",
+      "staff_id": 12
+    }
+  }
+}
+```
+
+### UI Usage
+
+- When showing price for a future billing period:
+  - Read `billing_period.amount_cents` from backend.
+  - Optionally show:
+    - Base plan price (if exposed),
+    - Override price and `reason` (from a separate endpoint or included metadata).
+- Staff should **not** manually enter a discounted amount for monthly fees; instead, create an override and let the server recompute future billing periods.
+
+---
+
+## 4) Overdue Stats and Behavior (Dashboard)
+
+Existing endpoints are still used, but underlying logic is now tied to `billing_periods`.
+
+### Get Overdue Stats
+
+- `GET /api/overdue-stats`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "overdue_customers": 5,
+    "overdue_fees": 8,
+    "last_check": 1697563200
+  }
+}
+```
+
+- `overdue_fees` now counts **overdue billing periods**, not legacy `MonthlyFeeTracking`.
+
+### Force Overdue Recalculation
+
+- `POST /api/mark-overdue-fees`
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Updated 5 overdue customers and fees",
+  "data": {
+    "updated_count": 5
+  }
+}
+```
+
+Behavior:
+
+- Marks customers as overdue when appropriate.
+- Marks `billing_periods` with `due_date < today` and `status = pending` as `overdue`, and updates `days_overdue`.
+
+---
+
+## 5) Recommended Frontend Flows
+
+### A) Customer Billing Overview
+
+#### 1. Load customer summary
+
+- `GET /api/customers/{id}`
+- Use:
+  - `subscription_status_display`
+  - `fee_status`
+  - `last_payment_date`
+  - `next_due_date`
+
+#### 2. Load payment history / schedule
+
+- Currently available: `GET /api/customers/{customer}/monthly-tracking` (legacy `MonthlyFeeTracking`).
+- **New canonical endpoint (to implement on backend):**
+
+##### Endpoint
+
+- `GET /api/customers/{customer}/billing-periods`
+
+##### Query params (optional)
+
+- `status`: filter by one status or comma-separated list, e.g.:
+  - `status=pending` or `status=pending,overdue`
+- `from_due_date`: ISO date → only periods with `due_date >= from_due_date`.
+- `to_due_date`: ISO date → only periods with `due_date <= to_due_date`.
+
+##### Response (example)
+
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "next_due_date": "2025-11-10",
+      "subscription_status": "paid"
+    },
+    "billing_periods": [
+      {
+        "id": 1001,
+        "customer_id": 1,
+        "period_start_date": "2025-10-10",
+        "period_end_date": "2025-11-09",
+        "billing_date": "2025-10-10",
+        "due_date": "2025-10-10",
+        "amount_cents": 450000,
+        "status": "paid",
+        "paid_at": "2025-10-09T10:00:00Z",
+        "paid_amount_cents": 450000,
+        "days_overdue": 0
+      },
+      {
+        "id": 1002,
+        "customer_id": 1,
+        "period_start_date": "2025-11-10",
+        "period_end_date": "2025-12-09",
+        "billing_date": "2025-11-10",
+        "due_date": "2025-11-10",
+        "amount_cents": 450000,
+        "status": "pending",
+        "paid_at": null,
+        "paid_amount_cents": null,
+        "days_overdue": 0
+      }
+    ]
+  }
+}
+```
+
+UI can render this as a table: Period (label from `billing_date`), Due Date, Amount, Status, Paid Date, Days Overdue. The payment form should filter this list to `status in ["pending","overdue"]` to populate the “Select billing months to pay” multi-select.
+
+### B) Payment Form (Pay One or Multiple Months)
+
+#### 1. Load outstanding periods
+
+- From `billing_periods` endpoint or pre-loaded data:
+  - Filter by `status in ["pending", "overdue"]` and optionally future pending periods for prepayments.
+
+#### 2. UX for selection
+
+- Show a list of selectable periods:
+  - Label example: `"Oct 2025 (due 2025-10-10) – PKR {amount_cents / 100}"`.
+  - Badges: `"Pending"`, `"Overdue (5 days)"`, `"Paid"`.
+- Staff can:
+  - Select one period → normal payment.
+  - Select multiple periods → batch payment (e.g., catch up on overdue months, or prepay future months).
+
+#### 3. Submit payment
+
+- POST `/api/fee-submissions/submit` with:
+
+```json
+{
+  "customer_id": 1,
+  "payment_method": "cash",
+  "payment_date": "2025-12-10",
+  "billing_period_ids": [1001, 1002],
+  "idempotency_key": "txn_customer1_2025_12",
+  "notes": "Catch-up payment"
+}
+```
+
+#### 4. Handle response
+
+- On success:
+  - Show success toast/modal with invoice numbers and amounts.
+  - Update UI with:
+    - Updated `customer` object (especially `next_due_date`, `subscription_status`, `last_payment_date`).
+    - Updated `billing_periods` from response (mark those rows as `paid`, update `days_overdue`).
+  - Optionally provide links to print/download invoices using `/api/invoices/{invoice}/print` / `/download`.
+
+- On business error:
+  - Show `response.message` (e.g. “Billing period 1001 is already paid.”).
+  - Refresh billing periods to resolve any stale state.
+
+### C) Early, Overdue, and Prepayment Behavior (What UI Should Expect)
+
+- **Early payment (before due date)**:
+  - Period becomes `status = paid`, `days_overdue = 0`.
+  - Other billing periods’ `due_date` do **not** change (no drift).
+  - `next_due_date` is always the earliest unpaid period’s `due_date`.
+
+- **Overdue payment**:
+  - Overdue period becomes `status = paid`.
+  - `days_overdue` reflects how late it was (e.g., 5 days).
+  - UI can display “Paid (5 days late)” or show a red badge with days overdue.
+
+- **Prepayment for multiple months**:
+  - Paying future periods (e.g., Dec, Jan) just marks those billing periods as paid.
+  - `next_due_date` becomes the earliest unpaid period after the last paid one.
+  - Historic prices for those periods remain fixed even if plan price changes later.
+
+---
+
+## 6) Implementation Checklist for Frontend
+
+1. **Stop sending `amount` for monthly fee payments**:
+   - Use `billing_period_ids` and let backend compute amounts.
+2. **Add period selection UI for payments**:
+   - Fetch and display open (pending/overdue) billing periods with clear labels and statuses.
+3. **Use `idempotency_key` on all payment submissions**:
+   - Generate a unique key per submit; handle “duplicate” responses as success.
+4. **Integrate price overrides UI**:
+   - For staff: form to call `POST /api/customers/{customer}/price-override`.
+   - Show active overrides and reasons in the customer billing view.
+5. **Wire overdue stats**:
+   - Use `GET /api/overdue-stats` for dashboard widgets.
+   - Optionally trigger `POST /api/mark-overdue-fees` from an admin-only control.
+6. **Gradually migrate history views**:
+   - Continue using `monthly-tracking` endpoints where needed, but prefer `billing_periods` once available for a clearer, canonical history.
+
+This MDC should be enough to wire up customer billing views, payment forms, and dashboard widgets using the new billing-period-based backend. If you add a dedicated `GET /api/customers/{id}/billing-periods` endpoint, update this file with the exact response shape for that endpoint.
+
+

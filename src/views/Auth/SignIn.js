@@ -80,8 +80,8 @@ function SignIn() {
           position: "top-right",
         });
 
-        // Redirect to dashboard
-        history.push("/admin/dashboard");
+        // Redirect to main dashboard landing (Sales & Analytics)
+        history.push("/admin/sales-analytics");
       } else {
         toast({
           title: "Login failed",

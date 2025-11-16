@@ -333,11 +333,20 @@ const ProductProfile = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return dateString;
+    }
+    return date.toISOString().split('T')[0];
+  };
+
   if (loading || !product) {
     return <AppLoader message="Loading product..." fullHeight />;
   }
 
-  const stockStatus = getStockStatus(product.stock);
+  const stockStatus = getStockStatus(product.stock || 0);
 
   return (
     <Box w="full" px={{ base: 4, md: 6 }}>
@@ -511,7 +520,7 @@ const ProductProfile = () => {
               <VStack spacing={2} align="stretch" flex="1">
                 <Box textAlign="center" py={2} bg={useColorModeValue("gray.50", "gray.700")} borderRadius="md" h="80px" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
                   <Text fontSize="2xl" fontWeight="bold" color={`${stockStatus.color}.500`}>
-                    {product.stockQuantity}
+                    {product.stock ?? 0}
                   </Text>
                   <Text fontSize="xs" color={cardLabelColor} fontWeight="medium" textTransform="uppercase" letterSpacing="wide">
                     Units in Stock
@@ -520,7 +529,9 @@ const ProductProfile = () => {
                 
                 <HStack justify="space-between" h="fit-content">
                   <Text fontSize="xs" color={cardLabelColor}>Last Updated:</Text>
-                  <Text fontSize="xs" fontWeight="medium">{product.lastUpdated}</Text>
+                  <Text fontSize="xs" fontWeight="medium">
+                    {formatDate(product.updated_at || product.lastUpdated)}
+                  </Text>
                 </HStack>
                 
                 <Button
@@ -867,7 +878,7 @@ const ProductProfile = () => {
                 </NumberInputStepper>
               </NumberInput>
               <Text fontSize="sm" color={cardLabelColor}>
-                Current stock: {product.stockQuantity} units
+                Current stock: {product.stock ?? 0} units
               </Text>
             </VStack>
           </ModalBody>
