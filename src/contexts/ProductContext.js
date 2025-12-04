@@ -47,7 +47,8 @@ export const ProductProvider = ({ children }) => {
 
     try {
       const data = await fetchProducts(filters);
-      const productList = data.data || [];
+      // Handle new paginated response structure
+      const productList = data.products || data.data || [];
       setProducts(productList);
       
       // Only mark as initialized if no filters (full list)

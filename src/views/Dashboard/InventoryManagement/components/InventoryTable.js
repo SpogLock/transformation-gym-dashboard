@@ -47,7 +47,7 @@ import Card from "components/Card/Card.js";
 import CardBody from "components/Card/CardBody.js";
 import CardHeader from "components/Card/CardHeader.js";
 import InventoryTableRow from "./InventoryTableRow";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { useSearch } from "contexts/SearchContext";
 import { useProducts } from "contexts/ProductContext";
@@ -55,6 +55,8 @@ import AddProductModal from "components/Modals/AddProductModal";
 import EditProductModal from "components/Modals/EditProductModal";
 import AppLoader from "components/Loaders/AppLoader";
 import EmptyState from "components/EmptyState/EmptyState";
+import Pagination from "components/Pagination/Pagination";
+import { getProducts } from "services/productService";
 import whey_dummy from "assets/img/whey_dummy.png";
 
 const InventoryTable = ({ title }) => {
@@ -81,14 +83,107 @@ const InventoryTable = ({ title }) => {
   const toast = useToast();
   
   // Product context
-  const { products, loading, fetchAllProducts, removeProduct } = useProducts();
+  const { removeProduct } = useProducts();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 100,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
   const [editingProduct, setEditingProduct] = useState(null);
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  const [currentMonthPage, setCurrentMonthPage] = useState(0); // 0 = current month, 1 = previous month, etc.
   
-  // Fetch products on mount
+  // Get month range for month-based pagination
+  const getMonthRange = useCallback((monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    return {
+      date_from: startDate.toISOString().split('T')[0],
+      date_to: endDate.toISOString().split('T')[0],
+    };
+  }, []);
+
+  // Load products with pagination
+  const loadProducts = useCallback(async (page = 1, perPage = 100) => {
+    try {
+      setLoading(true);
+      
+      // Get month range based on currentMonthPage (0 = current month, 1 = previous month, etc.)
+      const monthRange = getMonthRange(currentMonthPage);
+      
+      const apiFilters = {
+        search: searchQuery,
+        category: filters.category || '',
+        stock_status: filters.stockStatus || '',
+        sort_by: 'created_at',
+        sort_order: 'desc',
+        page: page,
+        per_page: perPage,
+        date_from: monthRange.date_from,
+        date_to: monthRange.date_to,
+      };
+      
+      const response = await getProducts(apiFilters);
+      
+      // Handle paginated response
+      if (response && response.products) {
+        setProducts(response.products);
+        setPagination(response.pagination || pagination);
+      } else if (Array.isArray(response)) {
+        setProducts(response);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: response.length,
+          from: 1,
+          to: response.length,
+        });
+      } else {
+        setProducts([]);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: 0,
+          from: 0,
+          to: 0,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, filters.category, filters.stockStatus, currentMonthPage, getMonthRange]);
+  
+  // Fetch products on mount and when filters change
   useEffect(() => {
-    fetchAllProducts();
-  }, [fetchAllProducts]);
+    const perPage = pagination.per_page || 100;
+    loadProducts(1, perPage);
+  }, [searchQuery, filters.category, filters.stockStatus, currentMonthPage]);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    loadProducts(newPage, pagination.per_page);
+  };
+
+  // Handle per page change
+  const handlePerPageChange = (newPerPage) => {
+    loadProducts(1, newPerPage);
+  };
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
@@ -429,6 +524,15 @@ const InventoryTable = ({ title }) => {
                 </MenuItem>
               </MenuList>
             </Menu>
+            
+            {/* Month Page Indicator */}
+            <Text fontSize="xs" color={textColor} fontWeight="medium" px={2}>
+              {(() => {
+                const now = new Date();
+                const targetDate = new Date(now.getFullYear(), now.getMonth() - currentMonthPage, 1);
+                return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              })()}
+            </Text>
           </Flex>
         </Flex>
       </CardHeader>
@@ -736,6 +840,45 @@ const InventoryTable = ({ title }) => {
               })}
             </Tbody>
           </Table>
+        )}
+        
+        {/* Pagination - Show if we have data or if pagination info is available */}
+        {!loading && (pagination.total > 0 || products.length > 0) && (
+          <Box>
+            <Pagination
+              currentPage={pagination.current_page || 1}
+              totalPages={pagination.last_page || 1}
+              perPage={pagination.per_page || 100}
+              total={pagination.total || products.length}
+              onPageChange={handlePageChange}
+              onPerPageChange={handlePerPageChange}
+            />
+            {/* Month Navigation */}
+            <Flex justify="space-between" align="center" px={4} py={2} borderTop="1px solid" borderColor={borderColor}>
+              <Button
+                size="sm"
+                onClick={() => setCurrentMonthPage(currentMonthPage + 1)}
+                variant="outline"
+              >
+                Previous Month
+              </Button>
+              <Text fontSize="sm" color={textColor} fontWeight="medium">
+                Month {currentMonthPage + 1}: {(() => {
+                  const now = new Date();
+                  const targetDate = new Date(now.getFullYear(), now.getMonth() - currentMonthPage, 1);
+                  return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                })()}
+              </Text>
+              <Button
+                size="sm"
+                onClick={() => setCurrentMonthPage(Math.max(0, currentMonthPage - 1))}
+                isDisabled={currentMonthPage === 0}
+                variant="outline"
+              >
+                Next Month
+              </Button>
+            </Flex>
+          </Box>
         )}
       </CardBody>
       

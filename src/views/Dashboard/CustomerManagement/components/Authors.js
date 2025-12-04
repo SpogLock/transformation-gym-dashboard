@@ -52,14 +52,16 @@ import StockTableRow from "components/Tables/StockTableRow";
 import AddCustomerModal from "components/Modals/AddCustomerModal";
 import PlansModal from "components/Modals/PlansModal";
 import EditCustomerModal from "components/Modals/EditCustomerModal";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { useSearch } from "contexts/SearchContext";
 import { useCustomers } from "contexts/CustomerContext";
+import { getCustomers } from "services/customerService";
 import { API_BASE_URL } from "services/api";
 import { useToast } from "@chakra-ui/react";
 import EmptyState from "components/EmptyState/EmptyState";
 import AppLoader from "components/Loaders/AppLoader";
+import Pagination from "components/Pagination/Pagination";
 
 
 const parseCurrencyInput = (value) => {
@@ -143,12 +145,23 @@ const Authors = ({ title, captions, data }) => {
     return Object.values(filters).filter(filter => filter !== '').length;
   };
   
-  // Customer management data from context
-  const { customers, loading, fetchCustomers, addCustomer, editCustomer: updateCustomer, removeCustomer } = useCustomers();
+  // Customer management data from context (for add/edit/delete operations)
+  const { addCustomer, editCustomer: updateCustomer, removeCustomer } = useCustomers();
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 100,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
   const [stockData, setStockData] = useState([]);
   const toast = useToast();
   const [editCustomer, setEditCustomer] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [currentMonthPage, setCurrentMonthPage] = useState(0); // 0 = current month, 1 = previous month, etc.
 
   const mapApiCustomerToRow = (c) => {
     const toTitle = (val) => {
@@ -218,9 +231,80 @@ const Authors = ({ title, captions, data }) => {
     };
   };
 
-  // Fetch customers on mount (only if not already cached)
-  useEffect(() => {
-    fetchCustomers().catch((error) => {
+  // Get month range for month-based pagination
+  const getMonthRange = useCallback((monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    return {
+      date_from: startDate.toISOString().split('T')[0],
+      date_to: endDate.toISOString().split('T')[0],
+    };
+  }, []);
+
+  // Load customers with pagination
+  const loadCustomers = useCallback(async (page = 1, perPage = 100) => {
+    try {
+      setLoading(true);
+      
+      // Get month range based on currentMonthPage
+      const monthRange = getMonthRange(currentMonthPage);
+      
+      // Build filters for API
+      const apiFilters = {
+        search: searchQuery,
+        status: filters.membershipStatus,
+        plan: filters.customerPlan,
+        has_trainer: filters.trainerRequired === 'Yes' ? true : filters.trainerRequired === 'No' ? false : undefined,
+        date_from: filters.dateFrom || monthRange.date_from,
+        date_to: filters.dateTo || monthRange.date_to,
+        sort_by: 'created_at',
+        sort_order: 'desc',
+        page: page,
+        per_page: perPage,
+      };
+      
+      const response = await getCustomers(apiFilters);
+      
+      // Handle paginated response
+      if (response && response.customers) {
+        setCustomers(response.customers);
+        setPagination(response.pagination || {
+          current_page: page,
+          last_page: 1,
+          per_page: perPage,
+          total: response.customers.length,
+          from: (page - 1) * perPage + 1,
+          to: Math.min(page * perPage, response.customers.length),
+        });
+      } else if (Array.isArray(response)) {
+        setCustomers(response);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: response.length,
+          from: 1,
+          to: response.length,
+        });
+      } else {
+        setCustomers([]);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: 0,
+          from: 0,
+          to: 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load customers:', error);
       toast({
         title: "Failed to load customers",
         description: error.message,
@@ -229,10 +313,36 @@ const Authors = ({ title, captions, data }) => {
         isClosable: true,
         position: "top-right",
       });
-    });
-  }, []);
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, filters.membershipStatus, filters.customerPlan, filters.trainerRequired, filters.dateFrom, filters.dateTo, currentMonthPage, getMonthRange, toast]);
 
-  // Apply local filtering and searching to cached customer data
+  // Load customers on mount and when filters change
+  useEffect(() => {
+    const perPage = pagination.per_page || 100;
+    loadCustomers(1, perPage);
+  }, [loadCustomers, pagination.per_page]);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    loadCustomers(newPage, pagination.per_page);
+  };
+
+  // Handle per page change
+  const handlePerPageChange = (newPerPage) => {
+    loadCustomers(1, newPerPage);
+  };
+
+  // Get month label for display
+  const getMonthLabel = (monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  // Apply local filtering to paginated data (for client-side filters that aren't sent to API)
   useEffect(() => {
     let filtered = [...customers];
 
@@ -322,7 +432,7 @@ const Authors = ({ title, captions, data }) => {
     // Map to display format
     const rows = filtered.map(mapApiCustomerToRow);
     setStockData(rows);
-  }, [customers, searchQuery, filters.membershipStatus, filters.customerPlan, filters.feeStatus, filters.trainerRequired, filters.dateFrom, filters.dateTo, filters.month, filters.year]);
+  }, [customers, filters.feeStatus]);
 
   const handleAddCustomer = async (newCustomer) => {
     // Map UI fields to API payload where possible
@@ -360,6 +470,9 @@ const Authors = ({ title, captions, data }) => {
 
     try {
       await addCustomer(payload, newCustomer._selectedFile);
+      // Reload customers after add
+      const perPage = pagination.per_page || 100;
+      loadCustomers(1, perPage);
       toast({
         title: "Customer added",
         status: "success",
@@ -419,6 +532,9 @@ const Authors = ({ title, captions, data }) => {
       await updateCustomer(editCustomer.id, updatePayload, selectedFile);
       setIsEditOpen(false);
       setEditCustomer(null);
+      // Reload customers after update
+      const perPage = pagination.per_page || 100;
+      loadCustomers(pagination.current_page, perPage);
       toast({ title: 'Customer updated', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
     } catch (error) {
       toast({ title: 'Update failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
@@ -428,6 +544,9 @@ const Authors = ({ title, captions, data }) => {
   const handleDelete = async (customer) => {
     try {
       await removeCustomer(customer.id);
+      // Reload customers after delete
+      const perPage = pagination.per_page || 100;
+      loadCustomers(pagination.current_page, perPage);
       toast({ title: 'Customer deleted', status: 'success', duration: 2000, isClosable: true, position: 'top-right' });
     } catch (error) {
       toast({ title: 'Delete failed', description: error.message, status: 'error', duration: 4000, isClosable: true, position: 'top-right' });
@@ -501,7 +620,9 @@ const Authors = ({ title, captions, data }) => {
     try {
       const res = await forceMarkOverdueFees();
       toast({ title: 'Overdue refreshed', description: res.message || 'Statuses updated', status: 'success', duration: 2500, isClosable: true, position: 'top-right' });
-      await fetchCustomers(true);
+      // Reload customers after refresh
+      const perPage = pagination.per_page || 100;
+      loadCustomers(pagination.current_page, perPage);
     } catch (e) {
       const message = (e && e.message) ? e.message : 'Failed updating overdue';
       toast({ title: 'Overdue update failed', description: message, status: 'error', duration: 3500, isClosable: true, position: 'top-right' });
@@ -930,6 +1051,11 @@ const Authors = ({ title, captions, data }) => {
             <Button size="xs" variant="outline" leftIcon={<RepeatIcon />} onClick={handleRefreshOverdueAll}>
               Refresh Overdue
             </Button>
+            
+            {/* Month Page Indicator */}
+            <Text fontSize="xs" color={textColor} fontWeight="medium" px={2}>
+              {getMonthLabel(currentMonthPage)}
+            </Text>
           </Flex>
         </Flex>
       </CardHeader>
@@ -1332,20 +1458,21 @@ const Authors = ({ title, captions, data }) => {
           </VStack>
         ) : (
           // Desktop Table View
-          <Table 
-            variant='simple' 
-            color={textColor}
-            size="md"
-            border="1px solid"
-            borderColor={borderColor}
-            borderRadius="12px"
-            overflow="visible"
-             boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
-           >
-             <Thead>
+          <Box>
+            <Table 
+              variant='simple' 
+              color={textColor}
+              size="md"
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="12px"
+              overflow="visible"
+              boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+            >
+              <Thead>
                 <Tr bg={useColorModeValue("gray.50", "gray.700")} borderBottom="2px solid" borderColor={borderColor}>
-                 {stockCaptions.map((caption, idx) => {
-                   return (
+                  {stockCaptions.map((caption, idx) => {
+                    return (
                       <Th 
                         color='gray.600' 
                         key={idx} 
@@ -1360,45 +1487,81 @@ const Authors = ({ title, captions, data }) => {
                         borderLeft={idx === 0 ? "none" : "1px solid"}
                         borderLeftColor={borderColor}
                       >
-                       {caption.key}
-                     </Th>
-                   );
-                 })}
-               </Tr>
-             </Thead>
-            <Tbody>
-               {filteredCustomers.map((row, index) => {
-                return (
-                          <StockTableRow
-                            key={`${row.memberName}-${index}`}
-                            id={row.id}
-                            picture={row.picture}
-                            memberName={row.memberName}
-                            memberType={row.memberType}
-                            mobileNo={row.mobileNo}
-                            email={row.email}
-                            address={row.address}
-                            registrationDate={row.registrationDate}
-                            membershipStatus={row.membershipStatus}
-                            trainerRequired={row.trainerRequired}
-                            customerPlan={row.customerPlan}
-                            customerWeight={row.customerWeight}
-                            customerAge={row.customerAge}
-                            monthlyFee={row.monthlyFee}
-                            nextDueDate={row.nextDueDate}
-                            nextDueDateRaw={row.nextDueDateRaw}
-                            feePaidDate={row.feePaidDate}
-                            feeStatus={row.feeStatus}
-                            onMouseEnter={(e) => handleMouseEnter(row, e)}
-                            onMouseLeave={handleMouseLeave}
-                            onClick={() => handleCustomerClick(row)}
-                            onEdit={() => handleOpenEdit(row)}
-                            onDelete={() => handleDelete(row)}
-                          />
-                );
-              })}
-            </Tbody>
-          </Table>
+                        {caption.key}
+                      </Th>
+                    );
+                  })}
+                </Tr>
+              </Thead>
+              <Tbody>
+                {filteredCustomers.map((row, index) => {
+                  return (
+                    <StockTableRow
+                      key={`${row.memberName}-${index}`}
+                      id={row.id}
+                      picture={row.picture}
+                      memberName={row.memberName}
+                      memberType={row.memberType}
+                      mobileNo={row.mobileNo}
+                      email={row.email}
+                      address={row.address}
+                      registrationDate={row.registrationDate}
+                      membershipStatus={row.membershipStatus}
+                      trainerRequired={row.trainerRequired}
+                      customerPlan={row.customerPlan}
+                      customerWeight={row.customerWeight}
+                      customerAge={row.customerAge}
+                      monthlyFee={row.monthlyFee}
+                      nextDueDate={row.nextDueDate}
+                      nextDueDateRaw={row.nextDueDateRaw}
+                      feePaidDate={row.feePaidDate}
+                      feeStatus={row.feeStatus}
+                      onMouseEnter={(e) => handleMouseEnter(row, e)}
+                      onMouseLeave={handleMouseLeave}
+                      onClick={() => handleCustomerClick(row)}
+                      onEdit={() => handleOpenEdit(row)}
+                      onDelete={() => handleDelete(row)}
+                    />
+                  );
+                })}
+              </Tbody>
+            </Table>
+            
+            {/* Pagination - Directly below table */}
+            {!loading && (pagination.total > 0 || customers.length > 0) && (
+              <>
+                <Pagination
+                  currentPage={pagination.current_page || 1}
+                  totalPages={pagination.last_page || 1}
+                  perPage={pagination.per_page || 100}
+                  total={pagination.total || customers.length}
+                  onPageChange={handlePageChange}
+                  onPerPageChange={handlePerPageChange}
+                />
+                {/* Month Navigation */}
+                <Flex justify="space-between" align="center" px={4} py={2} borderTop="1px solid" borderColor={borderColor}>
+                  <Button
+                    size="sm"
+                    onClick={() => setCurrentMonthPage(currentMonthPage + 1)}
+                    variant="outline"
+                  >
+                    Previous Month
+                  </Button>
+                  <Text fontSize="sm" color={textColor} fontWeight="medium">
+                    Month {currentMonthPage + 1}: {getMonthLabel(currentMonthPage)}
+                  </Text>
+                  <Button
+                    size="sm"
+                    onClick={() => setCurrentMonthPage(Math.max(0, currentMonthPage - 1))}
+                    isDisabled={currentMonthPage === 0}
+                    variant="outline"
+                  >
+                    Next Month
+                  </Button>
+                </Flex>
+              </>
+            )}
+          </Box>
         )}
       </CardBody>
       

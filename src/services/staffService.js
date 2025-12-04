@@ -15,7 +15,11 @@ export const getAllStaff = async (filters = {}) => {
   if (filters.status) queryParams.append('status', filters.status);
   if (filters.sort_by) queryParams.append('sort_by', filters.sort_by);
   if (filters.sort_order) queryParams.append('sort_order', filters.sort_order);
-  if (filters.per_page) queryParams.append('per_page', filters.per_page);
+  if (filters.per_page) {
+    // Support 'all' or 0 to get all records
+    const perPageValue = filters.per_page === 'all' || filters.per_page === 0 ? 'all' : filters.per_page;
+    queryParams.append('per_page', perPageValue);
+  }
   if (filters.page) queryParams.append('page', filters.page);
 
   const queryString = queryParams.toString();
@@ -27,14 +31,44 @@ export const getAllStaff = async (filters = {}) => {
     if (data.success) {
       // Handle paginated response structure
       if (data.data && data.data.data) {
-        return data.data.data; // Return the actual staff array
+        return {
+          staff: data.data.data,
+          pagination: {
+            current_page: data.data.current_page || 1,
+            last_page: data.data.last_page || 1,
+            per_page: data.data.per_page || 15,
+            total: data.data.total || 0,
+            from: data.data.from || 0,
+            to: data.data.to || 0,
+          }
+        };
       }
-      return data.data || [];
+      return {
+        staff: data.data || [],
+        pagination: {
+          current_page: 1,
+          last_page: 1,
+          per_page: 15,
+          total: Array.isArray(data.data) ? data.data.length : 0,
+          from: 1,
+          to: Array.isArray(data.data) ? data.data.length : 0,
+        }
+      };
     }
     throw new Error(data.message || 'Failed to fetch staff');
   } catch (error) {
     console.warn('Staff listing endpoint not available, returning empty array');
-    return [];
+    return {
+      staff: [],
+      pagination: {
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: 0,
+        from: 0,
+        to: 0,
+      }
+    };
   }
 };
 

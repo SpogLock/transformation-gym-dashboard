@@ -40,7 +40,8 @@ export const CustomerProvider = ({ children }) => {
     loadingRef.current = true;
     setLoading(true);
     try {
-      const response = await getCustomers();
+      // Use per_page=all to get all customers at once (new API supports this)
+      const response = await getCustomers({ per_page: 'all' });
       const customerList = response.customers || [];
       setCustomers(customerList);
       initializedRef.current = true;

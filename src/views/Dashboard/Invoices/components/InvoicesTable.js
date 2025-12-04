@@ -44,6 +44,7 @@ import CardHeader from "components/Card/CardHeader.js";
 import InvoicesTableRow from "./InvoicesTableRow";
 import AppLoader from "components/Loaders/AppLoader";
 import EmptyState from "components/EmptyState/EmptyState";
+import Pagination from "components/Pagination/Pagination";
 import React, { useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { getAllInvoices, getGuestInvoices, linkInvoiceToCustomer, bulkLinkInvoicesToCustomer, printInvoice, downloadInvoice } from "services/invoiceService";
@@ -68,6 +69,14 @@ const InvoicesTable = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 100,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
 
   // State for search and filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,6 +84,7 @@ const InvoicesTable = () => {
   const [paymentFilter, setPaymentFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [showGuestOnly, setShowGuestOnly] = useState(false);
+  const [currentMonthPage, setCurrentMonthPage] = useState(0); // 0 = current month, 1 = previous month, etc.
   const hasActiveFilters = Boolean(
     statusFilter || paymentFilter || dateFilter || showGuestOnly
   );
@@ -90,49 +100,83 @@ const InvoicesTable = () => {
     setShowGuestOnly(false);
   };
 
+  // Get month range for month-based pagination
+  const getMonthRange = (monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    return {
+      date_from: startDate.toISOString().split('T')[0],
+      date_to: endDate.toISOString().split('T')[0],
+    };
+  };
+
   // Load invoices from API
-  const loadInvoices = useCallback(async () => {
+  const loadInvoices = useCallback(async (page = 1, perPage = 100) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Get month range based on currentMonthPage (0 = current month, 1 = previous month, etc.)
+      // Each page represents a different month
+      const monthRange = getMonthRange(currentMonthPage);
       
       const filters = {
         search: searchQuery,
         payment_status: statusFilter,
         payment_method: paymentFilter,
-        date_from: dateFilter,
+        date_from: dateFilter || monthRange.date_from,
+        date_to: monthRange.date_to,
         sort_by: 'created_at',
-        sort_order: 'desc'
+        sort_order: 'desc',
+        page: page,
+        per_page: perPage,
       };
       
-      const data = showGuestOnly ? await getGuestInvoices(filters) : await getAllInvoices(filters);
+      const response = showGuestOnly ? await getGuestInvoices(filters) : await getAllInvoices(filters);
       
-      // Debug: Log the API response structure
-      console.log('Invoices API Response:', data);
-      console.log('Data type:', typeof data);
-      console.log('Is array:', Array.isArray(data));
-      if (data && data.length > 0) {
-        console.log('First invoice structure:', data[0]);
-        console.log('Customer data:', data[0].customer);
-      }
+      console.log('Invoices API Response:', response);
       
-      // Handle different possible response structures
-      let invoicesArray = [];
-      if (Array.isArray(data)) {
-        invoicesArray = data;
-      } else if (data && Array.isArray(data.invoices)) {
-        invoicesArray = data.invoices;
-      } else if (data && Array.isArray(data.data)) {
-        invoicesArray = data.data;
-      } else if (data && data.invoices && Array.isArray(data.invoices.data)) {
-        invoicesArray = data.invoices.data;
+      // Handle paginated response
+      if (response && response.invoices) {
+        setInvoices(response.invoices);
+        const paginationData = response.pagination || {
+          current_page: page,
+          last_page: Math.ceil((response.invoices.length || 0) / perPage) || 1,
+          per_page: perPage,
+          total: response.invoices.length || 0,
+          from: (page - 1) * perPage + 1,
+          to: Math.min(page * perPage, response.invoices.length || 0),
+        };
+        console.log('Setting pagination:', paginationData);
+        setPagination(paginationData);
+      } else if (Array.isArray(response)) {
+        // Fallback for non-paginated responses
+        setInvoices(response);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: response.length,
+          from: 1,
+          to: response.length,
+        });
       } else {
-        console.warn('Unexpected API response structure:', data);
-        invoicesArray = [];
+        setInvoices([]);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: 0,
+          from: 0,
+          to: 0,
+        });
       }
-      
-      console.log('Processed invoices array:', invoicesArray);
-      setInvoices(invoicesArray);
     } catch (err) {
       console.error('Failed to load invoices:', err);
       setError(err.message);
@@ -140,12 +184,36 @@ const InvoicesTable = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter, paymentFilter, dateFilter, showGuestOnly]);
+  }, [searchQuery, statusFilter, paymentFilter, dateFilter, showGuestOnly, currentMonthPage]);
 
   // Load invoices on component mount and when filters change
   useEffect(() => {
-    loadInvoices();
-  }, [loadInvoices]);
+    const perPage = pagination.per_page || 100;
+    loadInvoices(1, perPage);
+  }, [searchQuery, statusFilter, paymentFilter, dateFilter, showGuestOnly, currentMonthPage]);
+
+  // Handle month page change (each page = different month)
+  const handleMonthPageChange = (newMonthPage) => {
+    setCurrentMonthPage(newMonthPage);
+    setPagination(prev => ({ ...prev, current_page: 1 }));
+  };
+
+  // Handle page change within the same month
+  const handlePageChange = (newPage) => {
+    loadInvoices(newPage, pagination.per_page);
+  };
+
+  // Handle per page change
+  const handlePerPageChange = (newPerPage) => {
+    loadInvoices(1, newPerPage);
+  };
+
+  // Get month label for display
+  const getMonthLabel = (monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
 
   // Filter invoices based on search and filters (client-side filtering as fallback)
   const getFilteredInvoices = () => {
@@ -373,6 +441,11 @@ const InvoicesTable = () => {
             >
               {showGuestOnly ? "Show All" : "Guest Only"}
             </Button>
+
+            {/* Month Page Indicator */}
+            <Text fontSize="sm" color={textColor} fontWeight="medium" px={3}>
+              {getMonthLabel(currentMonthPage)}
+            </Text>
 
             {/* Actions Menu */}
             <Menu>
@@ -684,6 +757,42 @@ const InvoicesTable = () => {
               })}
             </Tbody>
           </Table>
+        )}
+        
+        {/* Pagination - Always show when we have data */}
+        {!loading && invoices.length > 0 && (
+          <Box mt={4}>
+            <Pagination
+              currentPage={pagination.current_page || 1}
+              totalPages={pagination.last_page || 1}
+              perPage={pagination.per_page || 100}
+              total={pagination.total || invoices.length}
+              onPageChange={handlePageChange}
+              onPerPageChange={handlePerPageChange}
+            />
+            {/* Month Navigation */}
+            <Flex justify="space-between" align="center" px={4} py={2} borderTop="1px solid" borderColor={borderColor}>
+              <Button
+                size="sm"
+                onClick={() => handleMonthPageChange(currentMonthPage + 1)}
+                isDisabled={false}
+                variant="outline"
+              >
+                Previous Month
+              </Button>
+              <Text fontSize="sm" color={textColor} fontWeight="medium">
+                Month {currentMonthPage + 1}: {getMonthLabel(currentMonthPage)}
+              </Text>
+              <Button
+                size="sm"
+                onClick={() => handleMonthPageChange(Math.max(0, currentMonthPage - 1))}
+                isDisabled={currentMonthPage === 0}
+                variant="outline"
+              >
+                Next Month
+              </Button>
+            </Flex>
+          </Box>
         )}
       </CardBody>
     </Card>

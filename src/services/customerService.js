@@ -14,7 +14,13 @@ const buildQueryString = (filters = {}) => {
 
 // Get customers (paginated) with optional filters
 export const getCustomers = async (filters = {}) => {
-  const query = buildQueryString(filters);
+  // Handle 'all' or 0 for per_page to get all customers
+  const processedFilters = { ...filters };
+  if (processedFilters.per_page === 'all' || processedFilters.per_page === 0) {
+    processedFilters.per_page = 'all';
+  }
+  
+  const query = buildQueryString(processedFilters);
   const data = await apiFetch(`/customers${query}`, {
     method: 'GET',
   });

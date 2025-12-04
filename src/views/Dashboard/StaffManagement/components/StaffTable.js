@@ -44,6 +44,7 @@ import StaffTableRow from "./StaffTableRow";
 import AddStaffModal from "components/Modals/AddStaffModal";
 import AppLoader from "components/Loaders/AppLoader";
 import EmptyState from "components/EmptyState/EmptyState";
+import Pagination from "components/Pagination/Pagination";
 import { getAllStaff, createStaff, updateStaff, deleteStaff, updateStaffStatus, updateStaffRole } from "services/staffService";
 import { useAuth } from "contexts/AuthContext";
 
@@ -67,10 +68,19 @@ const StaffTable = () => {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 100,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
 
   // State for filters
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentMonthPage, setCurrentMonthPage] = useState(0); // 0 = current month, 1 = previous month, etc.
   const hasActiveFilters = roleFilter !== "all" || statusFilter !== "all";
   const getFilterCount = () => [roleFilter, statusFilter].filter(v => v !== "all").length;
 
@@ -79,22 +89,71 @@ const StaffTable = () => {
     setStatusFilter("all");
   };
 
+  // Get month range for month-based pagination
+  const getMonthRange = (monthOffset) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    return {
+      date_from: startDate.toISOString().split('T')[0],
+      date_to: endDate.toISOString().split('T')[0],
+    };
+  };
+
   // Load staff from API
-  const loadStaff = useCallback(async () => {
+  const loadStaff = useCallback(async (page = 1, perPage = 100) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Get month range based on currentMonthPage (0 = current month, 1 = previous month, etc.)
+      const monthRange = getMonthRange(currentMonthPage);
       
       const filters = {
         search: searchQuery,
         role: roleFilter !== "all" ? roleFilter : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         sort_by: 'created_at',
-        sort_order: 'desc'
+        sort_order: 'desc',
+        page: page,
+        per_page: perPage,
+        date_from: monthRange.date_from,
+        date_to: monthRange.date_to,
       };
       
-      const data = await getAllStaff(filters);
-      setStaffList(data || []);
+      const response = await getAllStaff(filters);
+      
+      // Handle paginated response
+      if (response && response.staff) {
+        setStaffList(response.staff);
+        setPagination(response.pagination || pagination);
+      } else if (Array.isArray(response)) {
+        // Fallback for non-paginated responses
+        setStaffList(response);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: response.length,
+          from: 1,
+          to: response.length,
+        });
+      } else {
+        setStaffList([]);
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: perPage,
+          total: 0,
+          from: 0,
+          to: 0,
+        });
+      }
     } catch (err) {
       console.error('Failed to load staff:', err);
       setError(err.message);
@@ -102,12 +161,23 @@ const StaffTable = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, roleFilter, statusFilter]);
+  }, [searchQuery, roleFilter, statusFilter, currentMonthPage]);
 
   // Load staff on component mount and when filters change
   useEffect(() => {
-    loadStaff();
-  }, [loadStaff]);
+    const perPage = pagination.per_page || 100;
+    loadStaff(1, perPage);
+  }, [searchQuery, roleFilter, statusFilter, currentMonthPage]);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    loadStaff(newPage, pagination.per_page);
+  };
+
+  // Handle per page change
+  const handlePerPageChange = (newPerPage) => {
+    loadStaff(1, newPerPage);
+  };
 
   const filtered = useMemo(() => {
     // Client-side filtering as fallback
@@ -348,6 +418,15 @@ const StaffTable = () => {
               <option value="inactive">Inactive</option>
             </Select>
 
+            {/* Month Page Indicator */}
+            <Text fontSize="sm" color={textColor} fontWeight="medium" px={3}>
+              {(() => {
+                const now = new Date();
+                const targetDate = new Date(now.getFullYear(), now.getMonth() - currentMonthPage, 1);
+                return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              })()}
+            </Text>
+
             {/* Actions Menu */}
             <Menu>
               <MenuButton 
@@ -538,9 +617,48 @@ const StaffTable = () => {
                 onStatusChange={handleStatusChange}
                 onRoleChange={handleRoleChange}
               />
-            ))}
+            ))} 
           </Tbody>
         </Table>
+        )}
+        
+        {/* Pagination - Show if we have data or if pagination info is available */}
+        {!loading && (pagination.total > 0 || staffList.length > 0) && (
+          <Box>
+            <Pagination
+              currentPage={pagination.current_page || 1}
+              totalPages={pagination.last_page || 1}
+              perPage={pagination.per_page || 100}
+              total={pagination.total || staffList.length}
+              onPageChange={handlePageChange}
+              onPerPageChange={handlePerPageChange}
+            />
+            {/* Month Navigation */}
+            <Flex justify="space-between" align="center" px={4} py={2} borderTop="1px solid" borderColor={borderColor}>
+              <Button
+                size="sm"
+                onClick={() => setCurrentMonthPage(currentMonthPage + 1)}
+                variant="outline"
+              >
+                Previous Month
+              </Button>
+              <Text fontSize="sm" color={textColor} fontWeight="medium">
+                Month {currentMonthPage + 1}: {(() => {
+                  const now = new Date();
+                  const targetDate = new Date(now.getFullYear(), now.getMonth() - currentMonthPage, 1);
+                  return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                })()}
+              </Text>
+              <Button
+                size="sm"
+                onClick={() => setCurrentMonthPage(Math.max(0, currentMonthPage - 1))}
+                isDisabled={currentMonthPage === 0}
+                variant="outline"
+              >
+                Next Month
+              </Button>
+            </Flex>
+          </Box>
         )}
       </CardBody>
 
