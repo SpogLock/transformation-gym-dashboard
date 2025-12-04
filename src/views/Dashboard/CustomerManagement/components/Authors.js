@@ -937,60 +937,6 @@ const Authors = ({ title, captions, data }) => {
             Customer Management
           </Text>
           <Flex gap="6px" flexShrink={0} ms={{ base: "auto", md: "auto" }}>
-            {/* Quick Month/Year filters */}
-            <HStack display={{ base: 'none', md: 'flex' }} spacing={2} me={2}>
-              <Input
-                type="date"
-                size="xs"
-                value={filters.dateFrom}
-                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
-                w="140px"
-                placeholder="From"
-              />
-              <Input
-                type="date"
-                size="xs"
-                value={filters.dateTo}
-                onChange={(e) => updateFilters({ dateTo: e.target.value })}
-                w="140px"
-                placeholder="To"
-              />
-              <Select
-                placeholder="Month"
-                size="xs"
-                value={filters.month}
-                onChange={(e) => updateFilters({ month: e.target.value })}
-                w="110px"
-              >
-                <option value="1">January</option>
-                <option value="2">February</option>
-                <option value="3">March</option>
-                <option value="4">April</option>
-                <option value="5">May</option>
-                <option value="6">June</option>
-                <option value="7">July</option>
-                <option value="8">August</option>
-                <option value="9">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </Select>
-              <Select
-                placeholder="Year"
-                size="xs"
-                value={filters.year}
-                onChange={(e) => updateFilters({ year: e.target.value })}
-                w="90px"
-              >
-                {Array.from(new Set(customers
-                  .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
-                  .filter(Boolean)
-                )).sort((a,b)=>b-a).slice(0,8).map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </Select>
-              <Button size="xs" variant="ghost" onClick={() => clearFilters()}>Clear</Button>
-            </HStack>
             <Menu>
               <MenuButton
                 as={Button}
@@ -1051,11 +997,6 @@ const Authors = ({ title, captions, data }) => {
             <Button size="xs" variant="outline" leftIcon={<RepeatIcon />} onClick={handleRefreshOverdueAll}>
               Refresh Overdue
             </Button>
-            
-            {/* Month Page Indicator */}
-            <Text fontSize="xs" color={textColor} fontWeight="medium" px={2}>
-              {getMonthLabel(currentMonthPage)}
-            </Text>
           </Flex>
         </Flex>
       </CardHeader>
@@ -1071,50 +1012,120 @@ const Authors = ({ title, captions, data }) => {
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={3} align="stretch">
-              <Input
-                type="date"
-                size="sm"
-                value={filters.dateFrom}
-                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
-              />
-              <Input
-                type="date"
-                size="sm"
-                value={filters.dateTo}
-                onChange={(e) => updateFilters({ dateTo: e.target.value })}
-              />
-              <Select
-                placeholder="Month"
-                size="sm"
-                value={filters.month}
-                onChange={(e) => updateFilters({ month: e.target.value })}
-              >
-                <option value="1">January</option>
-                <option value="2">February</option>
-                <option value="3">March</option>
-                <option value="4">April</option>
-                <option value="5">May</option>
-                <option value="6">June</option>
-                <option value="7">July</option>
-                <option value="8">August</option>
-                <option value="9">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </Select>
-              <Select
-                placeholder="Year"
-                size="sm"
-                value={filters.year}
-                onChange={(e) => updateFilters({ year: e.target.value })}
-              >
-                {Array.from(new Set(customers
-                  .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
-                  .filter(Boolean)
-                )).sort((a,b)=>b-a).slice(0,8).map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </Select>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Date From</Text>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={filters.dateFrom}
+                  onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+                  placeholder="Start Date"
+                />
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Date To</Text>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={filters.dateTo}
+                  onChange={(e) => updateFilters({ dateTo: e.target.value })}
+                  placeholder="End Date"
+                />
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Month</Text>
+                <Select
+                  placeholder="Select Month"
+                  size="sm"
+                  value={filters.month}
+                  onChange={(e) => updateFilters({ month: e.target.value })}
+                >
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </Select>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Year</Text>
+                <Select
+                  placeholder="Select Year"
+                  size="sm"
+                  value={filters.year}
+                  onChange={(e) => updateFilters({ year: e.target.value })}
+                >
+                  {Array.from(new Set(customers
+                    .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
+                    .filter(Boolean)
+                  )).sort((a,b)=>b-a).slice(0,8).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </Select>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Fee Status</Text>
+                <Select
+                  placeholder="Select Fee Status"
+                  size="sm"
+                  value={filters.feeStatus}
+                  onChange={(e) => updateFilters({ feeStatus: e.target.value })}
+                >
+                  <option value="overdue">Overdue</option>
+                  <option value="paid">Paid</option>
+                  <option value="due_today">Due Today</option>
+                  <option value="due_soon">Due Soon</option>
+                  <option value="upcoming">Upcoming</option>
+                </Select>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Membership Status</Text>
+                <Select
+                  placeholder="Select Status"
+                  size="sm"
+                  value={filters.membershipStatus}
+                  onChange={(e) => updateFilters({ membershipStatus: e.target.value })}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </Select>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Plan</Text>
+                <Select
+                  placeholder="Select Plan"
+                  size="sm"
+                  value={filters.customerPlan}
+                  onChange={(e) => updateFilters({ customerPlan: e.target.value })}
+                >
+                  {Array.from(new Set(customers
+                    .map(c => c.plan_display || c.plan || '')
+                    .filter(Boolean)
+                  )).sort().map(plan => (
+                    <option key={plan} value={plan}>{plan}</option>
+                  ))}
+                </Select>
+              </Box>
+              <Box>
+                <Text fontSize="xs" fontWeight="semibold" mb={1} color={cardLabelColor}>Trainer Required</Text>
+                <Select
+                  placeholder="Select Option"
+                  size="sm"
+                  value={filters.trainerRequired}
+                  onChange={(e) => updateFilters({ trainerRequired: e.target.value })}
+                >
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </Select>
+              </Box>
             </VStack>
           </ModalBody>
           <Flex justify="space-between" align="center" px={6} pb={4}>
@@ -1538,27 +1549,7 @@ const Authors = ({ title, captions, data }) => {
                   onPageChange={handlePageChange}
                   onPerPageChange={handlePerPageChange}
                 />
-                {/* Month Navigation */}
-                <Flex justify="space-between" align="center" px={4} py={2} borderTop="1px solid" borderColor={borderColor}>
-                  <Button
-                    size="sm"
-                    onClick={() => setCurrentMonthPage(currentMonthPage + 1)}
-                    variant="outline"
-                  >
-                    Previous Month
-                  </Button>
-                  <Text fontSize="sm" color={textColor} fontWeight="medium">
-                    Month {currentMonthPage + 1}: {getMonthLabel(currentMonthPage)}
-                  </Text>
-                  <Button
-                    size="sm"
-                    onClick={() => setCurrentMonthPage(Math.max(0, currentMonthPage - 1))}
-                    isDisabled={currentMonthPage === 0}
-                    variant="outline"
-                  >
-                    Next Month
-                  </Button>
-                </Flex>
+
               </>
             )}
           </Box>
