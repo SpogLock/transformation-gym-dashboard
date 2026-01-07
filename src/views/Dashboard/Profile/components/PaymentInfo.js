@@ -21,12 +21,17 @@ import {
   StatLabel,
   StatNumber,
   useToast,
+  Input,
+  Select,
+  NumberInput,
+  NumberInputField,
+  Textarea,
 } from "@chakra-ui/react";
-import { 
-  FaCreditCard, 
-  FaMoneyBillWave, 
-  FaCalendarAlt, 
-  FaCheckCircle, 
+import {
+  FaCreditCard,
+  FaMoneyBillWave,
+  FaCalendarAlt,
+  FaCheckCircle,
   FaExclamationTriangle,
   FaWallet,
   FaClock
@@ -38,7 +43,7 @@ import CardHeader from "components/Card/CardHeader";
 import React, { useEffect, useMemo, useState } from "react";
 import AppLoader from "components/Loaders/AppLoader";
 import { getCustomerFeeStatus, getCustomerFeeHistory, submitFee, printInvoice, downloadInvoice } from "services/feeService";
-import { forceMarkOverdueFees, getCustomerMonthlyTracking, getCustomerBillingPeriods } from "services/overdueService";
+import { forceMarkOverdueFees, getCustomerMonthlyTracking } from "services/overdueService";
 import { sendPaymentReminder, getCustomer as fetchCustomerDetail, createPriceOverride } from "services/customerService";
 
 const PaymentInfo = ({ customer }) => {
@@ -61,7 +66,7 @@ const PaymentInfo = ({ customer }) => {
     const dueDate = new Date(nextDueDate);
     const diffTime = dueDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return { status: 'overdue', days: Math.abs(diffDays), color: 'red' };
     } else if (diffDays === 0) {
@@ -78,8 +83,12 @@ const PaymentInfo = ({ customer }) => {
   const [feeStatus, setFeeStatus] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [monthlyTracking, setMonthlyTracking] = useState([]); // legacy view
-  const [billingPeriods, setBillingPeriods] = useState([]);   // canonical periods for payments
-  const [selectedPeriodIds, setSelectedPeriodIds] = useState([]);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    payment_method: "cash",
+    payment_date: new Date().toISOString().slice(0, 10),
+    notes: "",
+  });
   const [overrideSubmitting, setOverrideSubmitting] = useState(false);
   const [overrideForm, setOverrideForm] = useState({
     amount: "",
@@ -91,17 +100,15 @@ const PaymentInfo = ({ customer }) => {
     const load = async () => {
       setLoading(true);
       try {
-        const [status, history, tracking, periods] = await Promise.all([
+        const [status, history, tracking] = await Promise.all([
           getCustomerFeeStatus(customer.id),
           getCustomerFeeHistory(customer.id),
           getCustomerMonthlyTracking(customer.id),
-          getCustomerBillingPeriods(customer.id),
         ]);
         if (!mounted) return;
         setFeeStatus(status);
         setHistoryItems(history.items);
         setMonthlyTracking(Array.isArray(tracking?.monthly_tracking) ? tracking.monthly_tracking : []);
-        setBillingPeriods(Array.isArray(periods?.billing_periods) ? periods.billing_periods : []);
       } catch (_) {
         if (!mounted) return;
         setFeeStatus(null);
@@ -114,6 +121,21 @@ const PaymentInfo = ({ customer }) => {
     if (customer?.id) load();
     return () => { mounted = false; };
   }, [customer?.id]);
+
+  // Set default payment amount from monthly fee when status loads
+  useEffect(() => {
+    if (feeStatus && !paymentForm.amount) {
+      const monthlyFee = feeStatus?.monthly_fee || customer.monthlyFee;
+      if (monthlyFee) {
+        const feeValue = typeof monthlyFee === 'string'
+          ? parseFloat(monthlyFee.replace(/[₨,]/g, ''))
+          : monthlyFee;
+        if (feeValue) {
+          setPaymentForm(prev => ({ ...prev, amount: feeValue }));
+        }
+      }
+    }
+  }, [feeStatus]);
 
   const paymentStatus = useMemo(() => {
     const nextDue = feeStatus?.next_due_date || customer.nextDueDate;
@@ -150,30 +172,13 @@ const PaymentInfo = ({ customer }) => {
   const handleMarkAsPaid = async () => {
     if (!customer?.id) return;
 
-    // Determine which billing periods to pay (from canonical billing periods):
-    // - Prefer user's explicit selection.
-    // - Otherwise, default to earliest pending/overdue period.
-    const selectable = Array.isArray(billingPeriods)
-      ? billingPeriods.filter((rec) =>
-          ["pending", "overdue"].includes(String(rec.status || "").toLowerCase())
-        )
-      : [];
-
-    let billingPeriodIds = selectedPeriodIds;
-    if (!billingPeriodIds.length && selectable.length) {
-      const earliest = [...selectable].sort(
-        (a, b) => new Date(a.due_date) - new Date(b.due_date)
-      )[0];
-      if (earliest?.id) {
-        billingPeriodIds = [earliest.id];
-      }
-    }
-
-    if (!billingPeriodIds.length) {
+    // Validate payment amount
+    const amount = parseFloat(paymentForm.amount);
+    if (!amount || amount <= 0) {
       toast({
-        title: "No months selected",
-        description: "Select at least one billing period to record a payment.",
-        status: "info",
+        title: "Invalid amount",
+        description: "Please enter a valid payment amount.",
+        status: "warning",
         duration: 3000,
         isClosable: true,
         position: "top-right",
@@ -183,52 +188,50 @@ const PaymentInfo = ({ customer }) => {
 
     setSubmitting(true);
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const idempotencyKey = `fee_${customer.id}_${Date.now()}`;
-
       const result = await submitFee({
         customer_id: customer.id,
-        payment_date: todayIso,
-        payment_method: "cash",
-        billing_period_ids: billingPeriodIds,
-        idempotency_key: idempotencyKey,
-        notes: "Monthly fee payment from profile",
+        amount: amount,
+        payment_method: paymentForm.payment_method,
+        payment_date: paymentForm.payment_date || new Date().toISOString().slice(0, 10),
+        notes: paymentForm.notes || "Monthly fee payment from profile",
       });
 
-      const [status, history, periods] = await Promise.all([
+      const [status, history] = await Promise.all([
         getCustomerFeeStatus(customer.id),
         getCustomerFeeHistory(customer.id),
-        getCustomerBillingPeriods(customer.id),
       ]);
       setFeeStatus(status);
       setHistoryItems(history.items);
-      setBillingPeriods(
-        Array.isArray(periods?.billing_periods)
-          ? periods.billing_periods
-          : []
-      );
-      setSelectedPeriodIds([]);
 
-      const primaryInvoice =
-        Array.isArray(result?.invoices) && result.invoices.length
-          ? result.invoices[0]
-          : result?.invoice;
+      // Reset form with default monthly fee
+      const monthlyFee = status?.monthly_fee || customer.monthlyFee;
+      const feeValue = typeof monthlyFee === 'string'
+        ? parseFloat(monthlyFee.replace(/[₨,]/g, ''))
+        : monthlyFee;
+      setPaymentForm({
+        amount: feeValue || "",
+        payment_method: "cash",
+        payment_date: new Date().toISOString().slice(0, 10),
+        notes: "",
+      });
+
+      const invoice = result?.invoice;
 
       toast({
         title: "Payment processed",
         description:
           (result && result.message) ||
-          "Monthly fee recorded successfully for the selected period(s).",
+          "Monthly fee recorded successfully.",
         status: "success",
         duration: 2500,
         isClosable: true,
         position: "top-right",
       });
 
-      if (primaryInvoice?.id) {
+      if (invoice?.id) {
         try {
-          await printInvoice(primaryInvoice.id);
-        } catch (_) {}
+          await printInvoice(invoice.id);
+        } catch (_) { }
       }
     } catch (e) {
       const message =
@@ -238,7 +241,7 @@ const PaymentInfo = ({ customer }) => {
       toast({
         title: "Payment not processed",
         description: message,
-        status: "info",
+        status: "error",
         duration: 3500,
         isClosable: true,
         position: "top-right",
@@ -261,7 +264,7 @@ const PaymentInfo = ({ customer }) => {
 
   const handlePrintInvoice = async (invoiceId) => {
     if (!invoiceId) return;
-    try { await printInvoice(invoiceId); } catch (_) {}
+    try { await printInvoice(invoiceId); } catch (_) { }
   };
 
   const getInvoiceId = (payment) => {
@@ -335,7 +338,7 @@ const PaymentInfo = ({ customer }) => {
       toast({ title: 'Overdue refreshed', description: res.message || 'Statuses updated', status: 'success', duration: 2500, isClosable: true, position: 'top-right' });
       const [status, tracking] = await Promise.all([
         getCustomerFeeStatus(customer.id),
-        getCustomerMonthlyTracking(customer.id)
+        getCustomerMonthlyTracking(customer.id),
       ]);
       setFeeStatus(status);
       setMonthlyTracking(Array.isArray(tracking?.monthly_tracking) ? tracking.monthly_tracking : []);
@@ -358,36 +361,13 @@ const PaymentInfo = ({ customer }) => {
         try {
           const tracking = await getCustomerMonthlyTracking(customer.id);
           if (mounted) setMonthlyTracking(Array.isArray(tracking?.monthly_tracking) ? tracking.monthly_tracking : []);
-        } catch (_) {}
-      } catch (_) {}
+        } catch (_) { }
+      } catch (_) { }
     };
     if (customer?.id) loadInvoicesFromDetail();
     return () => { mounted = false; };
   }, [customer?.id]);
 
-  const selectablePeriods = useMemo(() => {
-    if (!Array.isArray(billingPeriods)) return [];
-    return billingPeriods.filter((rec) =>
-      ["pending", "overdue"].includes(String(rec.status || "").toLowerCase())
-    );
-  }, [billingPeriods]);
-
-  const handleTogglePeriod = (periodId) => {
-    setSelectedPeriodIds((prev) =>
-      prev.includes(periodId)
-        ? prev.filter((id) => id !== periodId)
-        : [...prev, periodId]
-    );
-  };
-
-  const handleSelectAllPeriods = () => {
-    if (!selectablePeriods.length) return;
-    const allIds = selectablePeriods.map((p) => p.id);
-    const allSelected =
-      allIds.length &&
-      allIds.every((id) => selectedPeriodIds.includes(id));
-    setSelectedPeriodIds(allSelected ? [] : allIds);
-  };
 
   const handleOverrideSubmit = async () => {
     if (!customer?.id) return;
@@ -553,12 +533,12 @@ const PaymentInfo = ({ customer }) => {
               Payment Actions
             </Text>
           </HStack>
-          
+
           <VStack spacing={3} align="stretch" display={{ base: "flex", md: "none" }}>
             <Button
               leftIcon={<FaCheckCircle />}
               size="md"
-              isDisabled={!isPaymentOverdue(nextDueDateDisplay) || submitting}
+              isDisabled={submitting}
               isLoading={submitting}
               bg="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
               backgroundImage="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
@@ -569,18 +549,6 @@ const PaymentInfo = ({ customer }) => {
               onClick={handleMarkAsPaid}
             >
               Mark as Paid
-            </Button>
-            <Button
-              leftIcon={<FaCreditCard />}
-              size="md"
-              bg="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
-              backgroundImage="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
-              color="white"
-              _hover={{ bg: "linear-gradient(90deg, #2AA396 0%, #276B6C 100%)" }}
-              _active={{ bg: "#2C7A7B" }}
-              onClick={handleMarkAsPaid}
-            >
-              Process Payment
             </Button>
             <Button
               leftIcon={<FaExclamationTriangle />}
@@ -594,14 +562,14 @@ const PaymentInfo = ({ customer }) => {
               Send Reminder
             </Button>
           </VStack>
-          
+
           <HStack spacing={3} w="100%" display={{ base: "none", md: "flex" }}>
             <Button
               leftIcon={<FaCheckCircle />}
               size="md"
               flex={1}
               minW={0}
-              isDisabled={!isPaymentOverdue(nextDueDateDisplay) || submitting}
+              isDisabled={submitting}
               isLoading={submitting}
               bg="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
               backgroundImage="linear-gradient(90deg, #B88A1E 0%, #8A6A0A 100%)"
@@ -621,18 +589,6 @@ const PaymentInfo = ({ customer }) => {
               Mark as Paid
             </Button>
             <Button
-              leftIcon={<FaCreditCard />}
-              size="md"
-              flex={1}
-              minW={0}
-              bg="linear-gradient(90deg, #2FB3A3 0%, #2C7A7B 100%)"
-              color="white"
-              _hover={{ bg: "linear-gradient(90deg, #2AA396 0%, #276B6C 100%)" }}
-              onClick={handleMarkAsPaid}
-            >
-              Process Payment
-            </Button>
-            <Button
               leftIcon={<FaExclamationTriangle />}
               size="md"
               variant="outline"
@@ -648,116 +604,86 @@ const PaymentInfo = ({ customer }) => {
           </HStack>
         </VStack>
 
-        {/* Billing Period Selection */}
+        {/* Payment Form */}
         <Box mt={4}>
-          <Text fontSize="sm" color={textColor} fontWeight="semibold" mb={2}>
-            Select billing months to pay
+          <Text fontSize="sm" color={textColor} fontWeight="semibold" mb={3}>
+            Payment Details
           </Text>
-          {selectablePeriods.length === 0 ? (
-            <Box
-              p={3}
-              bg={useColorModeValue("gray.50", "gray.700")}
-              borderRadius="md"
-              border="1px solid"
-              borderColor={borderColor}
-            >
-              <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.300")}>
-                There are no pending or overdue billing periods. You&rsquo;re all caught up!
+          <VStack spacing={4} align="stretch">
+            {/* Amount Input */}
+            <Box>
+              <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                Amount (PKR) *
               </Text>
+              <NumberInput
+                value={paymentForm.amount}
+                onChange={(value) => setPaymentForm(prev => ({ ...prev, amount: value }))}
+                min={0}
+                precision={2}
+              >
+                <NumberInputField
+                  placeholder="Enter payment amount"
+                  bg={useColorModeValue("gray.50", "gray.700")}
+                  border="1px solid"
+                  borderColor={borderColor}
+                  borderRadius="md"
+                />
+              </NumberInput>
             </Box>
-          ) : (
-            <VStack align="stretch" spacing={2}>
-              <HStack justify="space-between">
-                <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")}>
-                  Tap to select one or multiple months (for catch-up or prepayment).
-                </Text>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={handleSelectAllPeriods}
-                >
-                  {selectablePeriods.every((p) =>
-                    selectedPeriodIds.includes(p.id)
-                  )
-                    ? "Clear selection"
-                    : "Select all"}
-                </Button>
-              </HStack>
 
-              {selectablePeriods.map((rec) => {
-                const isSelected = selectedPeriodIds.includes(rec.id);
-                const statusLower = String(rec.status || "").toLowerCase();
-                const isOverdue = statusLower === "overdue";
-                const badgeColor = isOverdue ? "red" : "yellow";
+            {/* Payment Method */}
+            <Box>
+              <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                Payment Method *
+              </Text>
+              <Select
+                value={paymentForm.payment_method}
+                onChange={(e) => setPaymentForm(prev => ({ ...prev, payment_method: e.target.value }))}
+                bg={useColorModeValue("gray.50", "gray.700")}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="md"
+              >
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="digital_wallet">Digital Wallet</option>
+              </Select>
+            </Box>
 
-                return (
-                  <Box
-                    key={rec.id}
-                    p={3}
-                    borderRadius="md"
-                    border="1px solid"
-                    borderColor={isSelected ? "brand.500" : borderColor}
-                    bg={
-                      isSelected
-                        ? useColorModeValue("brand.50", "gray.700")
-                        : useColorModeValue("gray.50", "gray.700")
-                    }
-                    cursor="pointer"
-                    onClick={() => handleTogglePeriod(rec.id)}
-                  >
-                    <HStack justify="space-between" align="flex-start">
-                      <VStack align="start" spacing={0}>
-                        <Text
-                          fontSize="sm"
-                          fontWeight="semibold"
-                          color={textColor}
-                        >
-                          {formatPrettyDate(rec.due_date)}
-                        </Text>
-                        <Text
-                          fontSize="xs"
-                          color={useColorModeValue("gray.500", "gray.400")}
-                        >
-                          Amount: ₨
-                          {Number(
-                            rec.amount_cents != null
-                              ? rec.amount_cents / 100
-                              : rec.amount
-                          ).toLocaleString()}
-                        </Text>
-                      </VStack>
-                      <VStack align="end" spacing={1}>
-                        <Badge
-                          colorScheme={badgeColor}
-                          variant="subtle"
-                          borderRadius="full"
-                          px={2}
-                          py={1}
-                          fontSize="xs"
-                        >
-                          {isOverdue
-                            ? `Overdue${rec.days_overdue ? ` (${rec.days_overdue} days)` : ""}`
-                            : "Pending"}
-                        </Badge>
-                        {isSelected && (
-                          <Badge
-                            colorScheme="green"
-                            variant="solid"
-                            borderRadius="full"
-                            px={2}
-                            py={1}
-                            fontSize="xs"
-                          >
-                            Selected
-                          </Badge>
-                        )}
-                      </VStack>
-                    </HStack>
-                  </Box>
-                );
-              })}
-            </VStack>
-          )}
+            {/* Payment Date */}
+            <Box>
+              <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                Payment Date
+              </Text>
+              <Input
+                type="date"
+                value={paymentForm.payment_date}
+                onChange={(e) => setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }))}
+                bg={useColorModeValue("gray.50", "gray.700")}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="md"
+              />
+            </Box>
+
+            {/* Notes */}
+            <Box>
+              <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
+                Notes (optional)
+              </Text>
+              <Textarea
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any notes about this payment..."
+                bg={useColorModeValue("gray.50", "gray.700")}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="md"
+                rows={3}
+              />
+            </Box>
+          </VStack>
         </Box>
       </Box>
 
@@ -792,7 +718,7 @@ const PaymentInfo = ({ customer }) => {
                     </VStack>
                     <VStack align="start" spacing={0}>
                       <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="medium">Status</Text>
-                        <Text fontSize="sm" color={textColor} fontWeight="semibold">{rec.status}</Text>
+                      <Text fontSize="sm" color={textColor} fontWeight="semibold">{rec.status}</Text>
                     </VStack>
                   </Grid>
                 </Box>
@@ -813,7 +739,7 @@ const PaymentInfo = ({ customer }) => {
               Payment History
             </Text>
           </HStack>
-          
+
           <VStack spacing={3} align="stretch">
             {historyItems.map((payment) => (
               <Box key={payment.id} p={3} bg={useColorModeValue("gray.50", "gray.700")} borderRadius="md" border="1px solid" borderColor={borderColor}>
@@ -827,12 +753,12 @@ const PaymentInfo = ({ customer }) => {
                       <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="medium">
                         Date
                       </Text>
-                        <Text fontSize="sm" color={textColor} fontWeight="semibold">
-                          {formatPrettyDate(payment.payment_date)}
-                        </Text>
+                      <Text fontSize="sm" color={textColor} fontWeight="semibold">
+                        {formatPrettyDate(payment.payment_date)}
+                      </Text>
                     </VStack>
                   </HStack>
-                  
+
                   <HStack spacing={3} align="center">
                     <Box color="brand.500" flexShrink={0}>
                       <Icon as={FaMoneyBillWave} boxSize={3} />
@@ -846,7 +772,7 @@ const PaymentInfo = ({ customer }) => {
                       </Text>
                     </VStack>
                   </HStack>
-                  
+
                   <VStack align="start" spacing={0}>
                     <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="medium">
                       Method
@@ -855,7 +781,7 @@ const PaymentInfo = ({ customer }) => {
                       {payment.payment_method_display || payment.payment_method}
                     </Text>
                   </VStack>
-                  
+
                   <Badge
                     colorScheme={"green"}
                     variant="subtle"
@@ -887,7 +813,7 @@ const PaymentInfo = ({ customer }) => {
                         </Text>
                       </VStack>
                     </HStack>
-                    
+
                     <HStack spacing={2} align="center" flex={1} minW={0} justify="flex-end">
                       <Box color="brand.500" flexShrink={0}>
                         <Icon as={FaMoneyBillWave} boxSize={3} />
@@ -913,7 +839,7 @@ const PaymentInfo = ({ customer }) => {
                         {payment.payment_method_display || payment.payment_method}
                       </Text>
                     </VStack>
-                    
+
                     <Badge
                       colorScheme={"green"}
                       variant="subtle"
@@ -948,85 +874,6 @@ const PaymentInfo = ({ customer }) => {
             <Button size="xs" variant="outline" ml="auto" onClick={() => handleRefreshOverdue?.()}>Refresh Overdue</Button>
           </HStack>
 
-          {/* Price Override (Custom Monthly Price) */}
-          <Box mt={4} p={3} borderRadius="md" border="1px dashed" borderColor={borderColor}>
-            <VStack align="stretch" spacing={3}>
-              <Text fontSize="sm" color={textColor} fontWeight="semibold">
-                Custom monthly price / discount
-              </Text>
-              <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")}>
-                Use this when you want to lock in a special price for this customer.
-                The backend will apply it automatically to future billing periods.
-              </Text>
-              <Grid
-                templateColumns={{ base: "1fr", md: "200px 1fr auto" }}
-                gap={3}
-                alignItems="center"
-              >
-                <Box>
-                  <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
-                    Monthly amount (PKR)
-                  </Text>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: "100%",
-                      padding: "6px 10px",
-                      borderRadius: "8px",
-                      border: `1px solid ${borderColor}`,
-                      background: "transparent",
-                      color: "inherit",
-                    }}
-                    value={overrideForm.amount}
-                    onChange={(e) =>
-                      setOverrideForm((prev) => ({
-                        ...prev,
-                        amount: e.target.value,
-                      }))
-                    }
-                  />
-                </Box>
-
-                <Box>
-                  <Text fontSize="xs" mb={1} color={useColorModeValue("gray.600", "gray.300")}>
-                    Reason (optional)
-                  </Text>
-                  <input
-                    type="text"
-                    placeholder="e.g. Loyalty discount"
-                    style={{
-                      width: "100%",
-                      padding: "6px 10px",
-                      borderRadius: "8px",
-                      border: `1px solid ${borderColor}`,
-                      background: "transparent",
-                      color: "inherit",
-                    }}
-                    value={overrideForm.reason}
-                    onChange={(e) =>
-                      setOverrideForm((prev) => ({
-                        ...prev,
-                        reason: e.target.value,
-                      }))
-                    }
-                  />
-                </Box>
-
-                <Box textAlign={{ base: "right", md: "left" }} mt={{ base: 2, md: 0 }}>
-                  <Button
-                    size="sm"
-                    colorScheme="teal"
-                    isLoading={overrideSubmitting}
-                    onClick={handleOverrideSubmit}
-                  >
-                    Save override
-                  </Button>
-                </Box>
-              </Grid>
-            </VStack>
-          </Box>
 
           <VStack spacing={3} align="stretch">
             {invoiceRows.length === 0 ? (

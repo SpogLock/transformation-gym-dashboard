@@ -8,7 +8,7 @@ import apiFetch from './api';
 // Get all invoices with optional filters
 export const getAllInvoices = async (filters = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   // Add filters to query params (matching API documentation)
   if (filters.search) queryParams.append('search', filters.search);
   if (filters.customer_id) queryParams.append('customer_id', filters.customer_id);
@@ -28,10 +28,10 @@ export const getAllInvoices = async (filters = {}) => {
 
   const queryString = queryParams.toString();
   const endpoint = queryString ? `/invoices?${queryString}` : '/invoices';
-  
+
   try {
     const data = await apiFetch(endpoint, { method: 'GET' });
-    
+
     if (data.success) {
       // Handle paginated response structure
       if (data.data && data.data.data) {
@@ -85,7 +85,7 @@ export const getInvoice = async (invoiceId) => {
   const data = await apiFetch(`/invoices/${invoiceId}`, {
     method: 'GET',
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -95,8 +95,8 @@ export const getInvoice = async (invoiceId) => {
 // Print an invoice to thermal printer
 export const printInvoice = async (invoiceId) => {
   const token = localStorage.getItem('auth_token');
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-  
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://server.transformations-fitness-studio.com/api';
+
   const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/print`, {
     method: 'GET',
     headers: {
@@ -104,9 +104,9 @@ export const printInvoice = async (invoiceId) => {
       'Accept': 'application/pdf'
     }
   });
-  
+
   if (!res.ok) throw new Error(`Failed to print invoice (${res.status})`);
-  
+
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
@@ -115,8 +115,8 @@ export const printInvoice = async (invoiceId) => {
 // Download an invoice PDF
 export const downloadInvoice = async (invoiceId, filename) => {
   const token = localStorage.getItem('auth_token');
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-  
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://server.transformations-fitness-studio.com/api';
+
   const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/download`, {
     method: 'GET',
     headers: {
@@ -124,9 +124,9 @@ export const downloadInvoice = async (invoiceId, filename) => {
       'Accept': 'application/pdf'
     }
   });
-  
+
   if (!res.ok) throw new Error(`Failed to download invoice (${res.status})`);
-  
+
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -142,7 +142,7 @@ export const downloadInvoice = async (invoiceId, filename) => {
 export const getInvoiceStats = async () => {
   try {
     const data = await apiFetch('/invoices-statistics', { method: 'GET' });
-    
+
     if (data.success) {
       return data.data;
     }
@@ -165,7 +165,7 @@ export const updateInvoice = async (invoiceId, updateData) => {
     method: 'PUT',
     body: updateData,
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -177,7 +177,7 @@ export const deleteInvoice = async (invoiceId) => {
   const data = await apiFetch(`/invoices/${invoiceId}`, {
     method: 'DELETE',
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -190,11 +190,11 @@ export const getInvoicesByCustomerName = async (customerName, filters = {}) => {
     customer_name: customerName,
     ...filters
   });
-  
+
   const data = await apiFetch(`/invoices-by-customer?${queryParams}`, {
     method: 'GET',
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -211,7 +211,7 @@ export const bulkUpdateInvoiceStatus = async (invoiceIds, paymentStatus, payment
       payment_method: paymentMethod,
     },
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -226,7 +226,7 @@ export const linkInvoiceToCustomer = async (invoiceId, customerId) => {
       customer_id: customerId,
     },
   });
-  
+
   if (data.success) {
     return data.data;
   }
@@ -236,7 +236,7 @@ export const linkInvoiceToCustomer = async (invoiceId, customerId) => {
 // Get guest invoices (invoices without customers)
 export const getGuestInvoices = async (filters = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   // Add filters to query params
   if (filters.search) queryParams.append('search', filters.search);
   if (filters.payment_status) queryParams.append('payment_status', filters.payment_status);
@@ -254,10 +254,10 @@ export const getGuestInvoices = async (filters = {}) => {
 
   const queryString = queryParams.toString();
   const endpoint = queryString ? `/invoices-guest?${queryString}` : '/invoices-guest';
-  
+
   try {
     const data = await apiFetch(endpoint, { method: 'GET' });
-    
+
     if (data.success) {
       // Handle paginated response structure
       if (data.data && data.data.data) {
@@ -311,7 +311,7 @@ export const bulkLinkInvoicesToCustomer = async (invoiceIds, customerId) => {
       customer_id: customerId,
     },
   });
-  
+
   if (data.success) {
     return data.data;
   }

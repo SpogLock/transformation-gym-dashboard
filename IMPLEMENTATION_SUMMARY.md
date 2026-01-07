@@ -240,7 +240,7 @@ if (isAdmin()) {
 ### API Base URL
 Located in `src/services/api.js`:
 ```javascript
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://server.transformations-fitness-studio.com/api';
 ```
 
 Change this for different environments (development, staging, production).

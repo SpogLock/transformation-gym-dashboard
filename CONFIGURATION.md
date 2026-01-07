@@ -11,7 +11,7 @@ To change the API base URL for different environments:
 
 ```javascript
 // Development
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://server.transformations-fitness-studio.com/api';
 
 // Production
 const API_BASE_URL = 'https://api.yourdomain.com/api';
@@ -26,12 +26,12 @@ If you want to use environment variables:
 
 1. Create a `.env` file in the project root:
 ```env
-REACT_APP_API_BASE_URL=http://localhost:8000/api
+REACT_APP_API_BASE_URL=https://server.transformations-fitness-studio.com/api
 ```
 
 2. Update `src/services/api.js`:
 ```javascript
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://server.transformations-fitness-studio.com/api';
 ```
 
 3. Create environment-specific files:
@@ -234,7 +234,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'sel
 For local development:
 ```javascript
 // src/services/api.js
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://server.transformations-fitness-studio.com/api';
 ```
 
 ### Production Configuration

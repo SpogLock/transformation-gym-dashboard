@@ -38,7 +38,7 @@ Base API configuration and fetch wrapper that:
 - Handles common HTTP configurations
 - Automatically includes authentication tokens
 - Manages error responses
-- Base URL: `http://localhost:8000/api`
+- Base URL: `https://server.transformations-fitness-studio.com/api`
 
 #### `authService.js`
 Authentication service providing functions for:

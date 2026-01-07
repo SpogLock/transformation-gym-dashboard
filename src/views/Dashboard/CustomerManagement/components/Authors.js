@@ -136,7 +136,7 @@ const Authors = ({ title, captions, data }) => {
     isFilterOpen,
     setIsFilterOpen,
   } = useSearch();
-  
+
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
 
@@ -144,7 +144,7 @@ const Authors = ({ title, captions, data }) => {
   const getFilterCount = () => {
     return Object.values(filters).filter(filter => filter !== '').length;
   };
-  
+
   // Customer management data from context (for add/edit/delete operations)
   const { addCustomer, editCustomer: updateCustomer, removeCustomer } = useCustomers();
   const [customers, setCustomers] = useState([]);
@@ -168,7 +168,7 @@ const Authors = ({ title, captions, data }) => {
       if (!val || typeof val !== 'string') return '';
       return val.charAt(0).toUpperCase() + val.slice(1);
     };
-    
+
     const formatDate = (dateString) => {
       if (!dateString) return '';
       try {
@@ -237,10 +237,10 @@ const Authors = ({ title, captions, data }) => {
     const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
     const year = targetDate.getFullYear();
     const month = targetDate.getMonth();
-    
+
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-    
+
     return {
       date_from: startDate.toISOString().split('T')[0],
       date_to: endDate.toISOString().split('T')[0],
@@ -251,10 +251,10 @@ const Authors = ({ title, captions, data }) => {
   const loadCustomers = useCallback(async (page = 1, perPage = 100) => {
     try {
       setLoading(true);
-      
+
       // Get month range based on currentMonthPage
       const monthRange = getMonthRange(currentMonthPage);
-      
+
       // Build filters for API
       const apiFilters = {
         search: searchQuery,
@@ -263,14 +263,15 @@ const Authors = ({ title, captions, data }) => {
         has_trainer: filters.trainerRequired === 'Yes' ? true : filters.trainerRequired === 'No' ? false : undefined,
         date_from: filters.dateFrom || monthRange.date_from,
         date_to: filters.dateTo || monthRange.date_to,
+        fee_status: filters.feeStatus,
         sort_by: 'created_at',
         sort_order: 'desc',
         page: page,
         per_page: perPage,
       };
-      
+
       const response = await getCustomers(apiFilters);
-      
+
       // Handle paginated response
       if (response && response.customers) {
         setCustomers(response.customers);
@@ -348,18 +349,29 @@ const Authors = ({ title, captions, data }) => {
 
     // Apply filters
     if (filters.membershipStatus) {
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         (c.status_display || c.status || "").toLowerCase() === filters.membershipStatus.toLowerCase()
       );
     }
     if (filters.customerPlan) {
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         (c.plan_display || c.plan || "").toLowerCase() === filters.customerPlan.toLowerCase()
       );
     }
     if (filters.trainerRequired) {
       const requiresTrainer = filters.trainerRequired === 'Yes';
       filtered = filtered.filter(c => c.has_trainer === requiresTrainer);
+    }
+
+    // Fee logic filtering (Client-side fallback)
+    if (filters.feeStatus) {
+      filtered = filtered.filter(c => {
+        // computeFeeStatus uses next_due_date and last_payment_date
+        const nextDue = c.next_due_date || c.nextDueDate || '';
+        const lastPayment = c.last_payment_date || c.fee_paid_date || c.feePaidDate || '';
+        const computed = computeFeeStatus(nextDue, lastPayment);
+        return computed.status === filters.feeStatus;
+      });
     }
 
     // Date-based filters
@@ -382,7 +394,7 @@ const Authors = ({ title, captions, data }) => {
     if (filters.dateTo) {
       const to = new Date(filters.dateTo);
       // Include entire day
-      to.setHours(23,59,59,999);
+      to.setHours(23, 59, 59, 999);
       filtered = filtered.filter(c => {
         const d = getCreatedAtDate(c);
         return d ? d <= to : false;
@@ -412,7 +424,7 @@ const Authors = ({ title, captions, data }) => {
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         (c.name || "").toLowerCase().includes(query) ||
         (c.email || "").toLowerCase().includes(query) ||
         (c.mobile_number || "").toLowerCase().includes(query)
@@ -775,7 +787,7 @@ const Authors = ({ title, captions, data }) => {
             }}
             transition="all 0.2s ease-in-out"
           >
-              <Avatar name={customer.memberName} src={customer.picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
+            <Avatar name={customer.memberName} src={customer.picture || undefined} w="100%" h="100%" bg="brand.300" color="white" fontWeight="bold" />
           </Box>
           <VStack align="start" spacing={1}>
             <Text fontSize="lg" fontWeight="bold" color={cardTextColor}>
@@ -809,7 +821,7 @@ const Authors = ({ title, captions, data }) => {
           />
           <Portal>
             <MenuList zIndex={9999} borderRadius="lg" overflow="hidden" data-menu="true" boxShadow="0 10px 25px rgba(0, 0, 0, 0.15)">
-              <MenuItem 
+              <MenuItem
                 onClick={() => console.log("Edit customer:", customer.name)}
                 borderRadius={0}
                 _first={{
@@ -818,12 +830,12 @@ const Authors = ({ title, captions, data }) => {
               >
                 Edit Customer
               </MenuItem>
-              <MenuItem 
+              <MenuItem
                 onClick={() => console.log("View details:", customer.name)}
               >
                 View Details
               </MenuItem>
-              <MenuItem 
+              <MenuItem
                 onClick={() => console.log("Delete customer:", customer.name)}
                 color="red.500"
               >
@@ -920,18 +932,18 @@ const Authors = ({ title, captions, data }) => {
   return (
     <Card overflowX={{ sm: "scroll", xl: "hidden" }} position="relative" zIndex={1}>
       <CardHeader p='6px 0px 22px 0px'>
-        <Flex 
-          justifyContent={{ base: "flex-start", md: "space-between" }} 
-          alignItems="center" 
-          width="100%" 
-          flexWrap="wrap" 
+        <Flex
+          justifyContent={{ base: "flex-start", md: "space-between" }}
+          alignItems="center"
+          width="100%"
+          flexWrap="wrap"
           gap={2}
           flexDirection={{ base: "row", md: "row" }}
         >
-          <Text 
-            fontSize={{ base: "sm", md: "md" }} 
-            color={textColor} 
-            fontWeight='bold' 
+          <Text
+            fontSize={{ base: "sm", md: "md" }}
+            color={textColor}
+            fontWeight='bold'
             flexShrink={0}
           >
             Customer Management
@@ -976,14 +988,14 @@ const Authors = ({ title, captions, data }) => {
                     )}
                   </HStack>
                 </MenuItem>
-                
+
                 <MenuItem
                   icon={<AttachmentIcon />}
                   onClick={() => console.log("Import CSV clicked")}
                 >
                   Import CSV
                 </MenuItem>
-                
+
                 <MenuItem
                   icon={<AddIcon />}
                   onClick={onOpen}
@@ -1065,7 +1077,7 @@ const Authors = ({ title, captions, data }) => {
                   {Array.from(new Set(customers
                     .map(c => (c.created_at ? new Date(c.created_at).getFullYear() : null))
                     .filter(Boolean)
-                  )).sort((a,b)=>b-a).slice(0,8).map(y => (
+                  )).sort((a, b) => b - a).slice(0, 8).map(y => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </Select>
@@ -1160,69 +1172,69 @@ const Authors = ({ title, captions, data }) => {
             fullHeight
           />
         ) : isMobile ? (
-           // Mobile List View - Minimal Info
-           <VStack spacing={3} align="stretch" w="100%">
-             {stockData.map((customer, index) => (
-               <Box
-                 key={`${customer.id}-${index}`}
-                 bg={cardBg}
-                 borderRadius="8px"
-                 border="1px solid"
-                 borderColor={borderColor}
-                 p={3}
-                 w="100%"
-                 boxShadow="0px 1px 3px rgba(0, 0, 0, 0.1)"
-                 cursor="pointer"
-                 onClick={() => handleCustomerClick(customer)}
-                 transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                 position="relative"
-                 _before={{
-                   content: '""',
-                   position: "absolute",
-                   top: 0,
-                   left: 0,
-                   right: 0,
-                   bottom: 0,
-                   borderRadius: "8px",
-                   background: "linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(129, 230, 217, 0.1) 100%)",
-                   opacity: 0,
-                   transition: "opacity 0.3s ease",
-                   zIndex: 0,
-                 }}
-                 _hover={{
-                   boxShadow: "0px 8px 25px rgba(56, 178, 172, 0.25)",
-                   transform: "translateY(-4px) scale(1.02)",
-                   borderColor: "brand.300",
-                   bg: useColorModeValue("brand.50", "brand.900"),
-                   _before: {
-                     opacity: 1,
-                   }
-                 }}
-                 sx={{
-                   "& > *": {
-                     position: "relative",
-                     zIndex: 1,
-                   }
-                 }}
-               >
-                 <Flex justifyContent="space-between" alignItems="center">
-                   <HStack spacing={3}>
-                     <Box
-                       w="40px"
-                       h="40px"
-                       borderRadius="full"
-                       overflow="hidden"
-                       border="2px solid"
-                       borderColor={borderColor}
-                       onMouseEnter={(e) => handleMouseEnter(customer, e)}
-                       onMouseLeave={handleMouseLeave}
-                       cursor="pointer"
-                       _hover={{
-                         borderColor: "brand.300",
-                         transform: "scale(1.05)",
-                       }}
-                       transition="all 0.2s ease-in-out"
-                     >
+          // Mobile List View - Minimal Info
+          <VStack spacing={3} align="stretch" w="100%">
+            {stockData.map((customer, index) => (
+              <Box
+                key={`${customer.id}-${index}`}
+                bg={cardBg}
+                borderRadius="8px"
+                border="1px solid"
+                borderColor={borderColor}
+                p={3}
+                w="100%"
+                boxShadow="0px 1px 3px rgba(0, 0, 0, 0.1)"
+                cursor="pointer"
+                onClick={() => handleCustomerClick(customer)}
+                transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                position="relative"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: "8px",
+                  background: "linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(129, 230, 217, 0.1) 100%)",
+                  opacity: 0,
+                  transition: "opacity 0.3s ease",
+                  zIndex: 0,
+                }}
+                _hover={{
+                  boxShadow: "0px 8px 25px rgba(56, 178, 172, 0.25)",
+                  transform: "translateY(-4px) scale(1.02)",
+                  borderColor: "brand.300",
+                  bg: useColorModeValue("brand.50", "brand.900"),
+                  _before: {
+                    opacity: 1,
+                  }
+                }}
+                sx={{
+                  "& > *": {
+                    position: "relative",
+                    zIndex: 1,
+                  }
+                }}
+              >
+                <Flex justifyContent="space-between" alignItems="center">
+                  <HStack spacing={3}>
+                    <Box
+                      w="40px"
+                      h="40px"
+                      borderRadius="full"
+                      overflow="hidden"
+                      border="2px solid"
+                      borderColor={borderColor}
+                      onMouseEnter={(e) => handleMouseEnter(customer, e)}
+                      onMouseLeave={handleMouseLeave}
+                      cursor="pointer"
+                      _hover={{
+                        borderColor: "brand.300",
+                        transform: "scale(1.05)",
+                      }}
+                      transition="all 0.2s ease-in-out"
+                    >
                       <Avatar
                         name={customer.memberName}
                         src={customer.picture || undefined}
@@ -1232,246 +1244,246 @@ const Authors = ({ title, captions, data }) => {
                         color="white"
                         fontWeight="bold"
                         title={customer.memberName}
-                       />
-                     </Box>
-                     <VStack align="start" spacing={0}>
-                       <Text fontSize="md" fontWeight="bold" color={textColor}>
-                         {customer.memberName}
-                       </Text>
-                       <Text fontSize="xs" color={cardLabelColor}>
-                         {customer.email}
-                       </Text>
-                       <Text fontSize="xs" color={cardLabelColor}>
-                         {customer.mobileNo}
-                       </Text>
-                     </VStack>
-                   </HStack>
-                          <VStack align="end" spacing={1}>
-                            <Badge
-                              colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
-                              variant="subtle"
-                              px={2}
-                              py={1}
-                              borderRadius="full"
-                              fontSize="xs"
-                              fontWeight="semibold"
-                            >
-                              {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
-                            </Badge>
-                            <Text fontSize="xs" color={cardLabelColor}>
-                              {customer.customerPlan}
-                            </Text>
-                            {isFeeOverdue(customer.nextDueDate) && (
-                              <Box color="red.500" fontSize="xs">⚠️</Box>
-                            )}
-                          </VStack>
-                 </Flex>
-               </Box>
-             ))}
-           </VStack>
-         ) : isTablet ? (
-           // Tablet Card View - More Details
+                      />
+                    </Box>
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="md" fontWeight="bold" color={textColor}>
+                        {customer.memberName}
+                      </Text>
+                      <Text fontSize="xs" color={cardLabelColor}>
+                        {customer.email}
+                      </Text>
+                      <Text fontSize="xs" color={cardLabelColor}>
+                        {customer.mobileNo}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <VStack align="end" spacing={1}>
+                    <Badge
+                      colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
+                      variant="subtle"
+                      px={2}
+                      py={1}
+                      borderRadius="full"
+                      fontSize="xs"
+                      fontWeight="semibold"
+                    >
+                      {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
+                    </Badge>
+                    <Text fontSize="xs" color={cardLabelColor}>
+                      {customer.customerPlan}
+                    </Text>
+                    {isFeeOverdue(customer.nextDueDate) && (
+                      <Box color="red.500" fontSize="xs">⚠️</Box>
+                    )}
+                  </VStack>
+                </Flex>
+              </Box>
+            ))}
+          </VStack>
+        ) : isTablet ? (
+          // Tablet Card View - More Details
           <VStack spacing={4} align="stretch" w="100%">
-             {filteredCustomers.map((customer, index) => (
-               <Box
-                 key={`${customer.id}-${index}`}
-                 bg={cardBg}
-                 borderRadius="12px"
-                 border="1px solid"
-                 borderColor={borderColor}
-                 p={4}
-                 w="100%"
-                 boxShadow="0px 2px 8px rgba(0, 0, 0, 0.1)"
-                 cursor="pointer"
-                 onClick={() => handleCustomerClick(customer)}
-                 transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                 position="relative"
-                 _before={{
-                   content: '""',
-                   position: "absolute",
-                   top: 0,
-                   left: 0,
-                   right: 0,
-                   bottom: 0,
-                   borderRadius: "12px",
-                   background: "linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(129, 230, 217, 0.1) 100%)",
-                   opacity: 0,
-                   transition: "opacity 0.3s ease",
-                   zIndex: 0,
-                 }}
-                 _hover={{
-                   boxShadow: "0px 12px 30px rgba(56, 178, 172, 0.3)",
-                   transform: "translateY(-6px) scale(1.03)",
-                   borderColor: "brand.300",
-                   bg: useColorModeValue("brand.50", "brand.900"),
-                   _before: {
-                     opacity: 1,
-                   }
-                 }}
-                 sx={{
-                   "& > *": {
-                     position: "relative",
-                     zIndex: 1,
-                   }
-                 }}
-               >
-                 {/* Header with Picture, Name and Status */}
-                 <Flex justifyContent="space-between" alignItems="center" mb={3}>
-                   <HStack spacing={3}>
-                     <Box
-                       w="50px"
-                       h="50px"
-                       borderRadius="full"
-                       overflow="hidden"
-                       border="2px solid"
-                       borderColor={borderColor}
-                       onMouseEnter={(e) => handleMouseEnter(customer, e)}
-                       onMouseLeave={handleMouseLeave}
-                       cursor="pointer"
-                       _hover={{
-                         borderColor: "brand.300",
-                         transform: "scale(1.1)",
-                       }}
-                       transition="all 0.2s ease-in-out"
-                     >
-                       <Avatar
-                         name={customer.memberName}
-                         src={customer.picture}
-                         w="100%"
-                         h="100%"
-                         bg="brand.300"
-                         color="white"
-                         fontWeight="bold"
-                         title={customer.memberName}
-                       />
-                     </Box>
-                     <VStack align="start" spacing={1}>
-                       <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                         {customer.memberName}
-                       </Text>
-                       <Text fontSize="sm" color={cardLabelColor}>
-                         ID: {customer.id}
-                       </Text>
-                     </VStack>
-                   </HStack>
-                   <Badge
+            {filteredCustomers.map((customer, index) => (
+              <Box
+                key={`${customer.id}-${index}`}
+                bg={cardBg}
+                borderRadius="12px"
+                border="1px solid"
+                borderColor={borderColor}
+                p={4}
+                w="100%"
+                boxShadow="0px 2px 8px rgba(0, 0, 0, 0.1)"
+                cursor="pointer"
+                onClick={() => handleCustomerClick(customer)}
+                transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                position="relative"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, rgba(56, 178, 172, 0.1) 0%, rgba(129, 230, 217, 0.1) 100%)",
+                  opacity: 0,
+                  transition: "opacity 0.3s ease",
+                  zIndex: 0,
+                }}
+                _hover={{
+                  boxShadow: "0px 12px 30px rgba(56, 178, 172, 0.3)",
+                  transform: "translateY(-6px) scale(1.03)",
+                  borderColor: "brand.300",
+                  bg: useColorModeValue("brand.50", "brand.900"),
+                  _before: {
+                    opacity: 1,
+                  }
+                }}
+                sx={{
+                  "& > *": {
+                    position: "relative",
+                    zIndex: 1,
+                  }
+                }}
+              >
+                {/* Header with Picture, Name and Status */}
+                <Flex justifyContent="space-between" alignItems="center" mb={3}>
+                  <HStack spacing={3}>
+                    <Box
+                      w="50px"
+                      h="50px"
+                      borderRadius="full"
+                      overflow="hidden"
+                      border="2px solid"
+                      borderColor={borderColor}
+                      onMouseEnter={(e) => handleMouseEnter(customer, e)}
+                      onMouseLeave={handleMouseLeave}
+                      cursor="pointer"
+                      _hover={{
+                        borderColor: "brand.300",
+                        transform: "scale(1.1)",
+                      }}
+                      transition="all 0.2s ease-in-out"
+                    >
+                      <Avatar
+                        name={customer.memberName}
+                        src={customer.picture}
+                        w="100%"
+                        h="100%"
+                        bg="brand.300"
+                        color="white"
+                        fontWeight="bold"
+                        title={customer.memberName}
+                      />
+                    </Box>
+                    <VStack align="start" spacing={1}>
+                      <Text fontSize="lg" fontWeight="bold" color={textColor}>
+                        {customer.memberName}
+                      </Text>
+                      <Text fontSize="sm" color={cardLabelColor}>
+                        ID: {customer.id}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <Badge
                     colorScheme={(customer.membershipStatus || '').toLowerCase() === "active" ? "green" : "red"}
-                     variant="subtle"
-                     px={3}
-                     py={1}
-                     borderRadius="full"
-                     fontSize="xs"
-                     fontWeight="semibold"
-                   >
+                    variant="subtle"
+                    px={3}
+                    py={1}
+                    borderRadius="full"
+                    fontSize="xs"
+                    fontWeight="semibold"
+                  >
                     {(customer.membershipStatus || '').charAt(0).toUpperCase() + (customer.membershipStatus || '').slice(1)}
-                   </Badge>
-                 </Flex>
+                  </Badge>
+                </Flex>
 
-                        <Divider mb={3} />
+                <Divider mb={3} />
 
-                        {/* Fee Status */}
-                        {isFeeOverdue(customer.nextDueDate) && (
-                          <Flex justifyContent="flex-end" alignItems="center" mb={3}>
-                            <HStack spacing={1}>
-                              <Box color="red.500" fontSize="sm">⚠️</Box>
-                              <Text fontSize="xs" color="red.500" fontWeight="semibold">
-                                OVERDUE
-                              </Text>
-                            </HStack>
-                          </Flex>
+                {/* Fee Status */}
+                {isFeeOverdue(customer.nextDueDate) && (
+                  <Flex justifyContent="flex-end" alignItems="center" mb={3}>
+                    <HStack spacing={1}>
+                      <Box color="red.500" fontSize="sm">⚠️</Box>
+                      <Text fontSize="xs" color="red.500" fontWeight="semibold">
+                        OVERDUE
+                      </Text>
+                    </HStack>
+                  </Flex>
+                )}
+
+                <Divider mb={3} />
+
+                {/* Contact Information */}
+                <VStack align="stretch" spacing={3} mb={4}>
+                  <HStack spacing={3} align="start">
+                    <EmailIcon color={cardIconColor} boxSize={4} mt={0.5} />
+                    <VStack align="start" spacing={0} flex={1}>
+                      <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
+                        Email
+                      </Text>
+                      <Text fontSize="sm" color={cardLabelColor} noOfLines={1}>
+                        {customer.email}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <HStack spacing={3} align="start">
+                    <PhoneIcon color={cardIconColor} boxSize={4} mt={0.5} />
+                    <VStack align="start" spacing={0} flex={1}>
+                      <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
+                        Mobile
+                      </Text>
+                      <Text fontSize="sm" color={cardLabelColor}>
+                        {customer.mobileNo}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <HStack spacing={3} align="start">
+                    <Box color={cardIconColor} fontSize="sm" fontWeight="bold" mt={0.5}>📍</Box>
+                    <VStack align="start" spacing={1} flex={1}>
+                      <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
+                        Address
+                      </Text>
+                      <Text fontSize="xs" color={cardLabelColor} noOfLines={2}>
+                        {customer.address}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </VStack>
+
+                <Divider mb={3} />
+
+                {/* Customer Details Grid */}
+                <Box>
+                  <Text fontSize="xs" color={cardIconColor} fontWeight="bold" textTransform="uppercase" mb={3}>
+                    Customer Details
+                  </Text>
+                  <Box display="grid" gridTemplateColumns="1fr 1fr" gap={3}>
+                    <VStack align="start" spacing={1}>
+                      <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
+                        Customer Plan
+                      </Text>
+                      <Badge
+                        colorScheme={
+                          customer.customerPlan === "Premium" ? "purple" :
+                            customer.customerPlan === "Basic" ? "blue" : "orange"
+                        }
+                        variant="subtle"
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight="semibold"
+                      >
+                        {customer.customerPlan}
+                      </Badge>
+                    </VStack>
+                    <VStack align="start" spacing={1}>
+                      <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
+                        Trainer Required
+                      </Text>
+                      <HStack spacing={1}>
+                        {customer.trainerRequired === "Yes" ? (
+                          <StarIcon boxSize={3} color="yellow.500" />
+                        ) : (
+                          <CloseIcon boxSize={3} color="gray.400" />
                         )}
-
-                        <Divider mb={3} />
-
-                        {/* Contact Information */}
-                        <VStack align="stretch" spacing={3} mb={4}>
-                   <HStack spacing={3} align="start">
-                     <EmailIcon color={cardIconColor} boxSize={4} mt={0.5} />
-                     <VStack align="start" spacing={0} flex={1}>
-                       <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
-                         Email
-                       </Text>
-                       <Text fontSize="sm" color={cardLabelColor} noOfLines={1}>
-                         {customer.email}
-                       </Text>
-                     </VStack>
-                   </HStack>
-                   <HStack spacing={3} align="start">
-                     <PhoneIcon color={cardIconColor} boxSize={4} mt={0.5} />
-                     <VStack align="start" spacing={0} flex={1}>
-                       <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
-                         Mobile
-                       </Text>
-                       <Text fontSize="sm" color={cardLabelColor}>
-                         {customer.mobileNo}
-                       </Text>
-                     </VStack>
-                   </HStack>
-                   <HStack spacing={3} align="start">
-                     <Box color={cardIconColor} fontSize="sm" fontWeight="bold" mt={0.5}>📍</Box>
-                     <VStack align="start" spacing={1} flex={1}>
-                       <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
-                         Address
-                       </Text>
-                       <Text fontSize="xs" color={cardLabelColor} noOfLines={2}>
-                         {customer.address}
-                       </Text>
-                     </VStack>
-                   </HStack>
-                 </VStack>
-
-                 <Divider mb={3} />
-
-                 {/* Customer Details Grid */}
-                 <Box>
-                   <Text fontSize="xs" color={cardIconColor} fontWeight="bold" textTransform="uppercase" mb={3}>
-                     Customer Details
-                   </Text>
-                   <Box display="grid" gridTemplateColumns="1fr 1fr" gap={3}>
-                     <VStack align="start" spacing={1}>
-                       <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
-                         Customer Plan
-                       </Text>
-                       <Badge
-                         colorScheme={
-                           customer.customerPlan === "Premium" ? "purple" : 
-                           customer.customerPlan === "Basic" ? "blue" : "orange"
-                         }
-                         variant="subtle"
-                         px={2}
-                         py={1}
-                         borderRadius="md"
-                         fontSize="xs"
-                         fontWeight="semibold"
-                       >
-                         {customer.customerPlan}
-                       </Badge>
-                     </VStack>
-                     <VStack align="start" spacing={1}>
-                       <Text fontSize="xs" color={cardIconColor} fontWeight="medium" textTransform="uppercase">
-                         Trainer Required
-                       </Text>
-                       <HStack spacing={1}>
-                         {customer.trainerRequired === "Yes" ? (
-                           <StarIcon boxSize={3} color="yellow.500" />
-                         ) : (
-                           <CloseIcon boxSize={3} color="gray.400" />
-                         )}
-                         <Text fontSize="sm" fontWeight="bold" color={textColor}>
-                           {customer.trainerRequired}
-                         </Text>
-                       </HStack>
-                     </VStack>
-                   </Box>
-                 </Box>
-               </Box>
+                        <Text fontSize="sm" fontWeight="bold" color={textColor}>
+                          {customer.trainerRequired}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Box>
+                </Box>
+              </Box>
             ))}
           </VStack>
         ) : (
           // Desktop Table View
           <Box>
-            <Table 
-              variant='simple' 
+            <Table
+              variant='simple'
               color={textColor}
               size="md"
               border="1px solid"
@@ -1484,10 +1496,10 @@ const Authors = ({ title, captions, data }) => {
                 <Tr bg={useColorModeValue("gray.50", "gray.700")} borderBottom="2px solid" borderColor={borderColor}>
                   {stockCaptions.map((caption, idx) => {
                     return (
-                      <Th 
-                        color='gray.600' 
-                        key={idx} 
-                        width={caption.width} 
+                      <Th
+                        color='gray.600'
+                        key={idx}
+                        width={caption.width}
                         px="12px"
                         py="16px"
                         fontWeight="semibold"
@@ -1537,7 +1549,7 @@ const Authors = ({ title, captions, data }) => {
                 })}
               </Tbody>
             </Table>
-            
+
             {/* Pagination - Directly below table */}
             {!loading && (pagination.total > 0 || customers.length > 0) && (
               <>
@@ -1555,12 +1567,12 @@ const Authors = ({ title, captions, data }) => {
           </Box>
         )}
       </CardBody>
-      
+
       <PlansModal
         isOpen={plansDisclosure.isOpen}
         onClose={plansDisclosure.onClose}
       />
-      
+
       <AddCustomerModal
         isOpen={isOpen}
         onClose={onClose}
@@ -1572,10 +1584,10 @@ const Authors = ({ title, captions, data }) => {
         customer={editCustomer}
         onSave={handleSaveEdit}
       />
-      
+
       {/* Hover Modal */}
       <HoverModal />
-      
+
       {/* CSS Animation */}
       <style jsx global>{`
         @keyframes fadeInScale {

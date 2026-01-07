@@ -1,10 +1,15 @@
 import apiFetch, { API_BASE_URL } from './api';
 
-// Submit a fee payment and generate invoices (billing-period based)
+// Submit a fee payment and generate invoices (simplified API)
 // NOTE:
-// - For monthly fees, do NOT send `amount` from the frontend anymore.
-// - Instead, pass an array of `billing_period_ids` and let the backend compute amounts.
-// - Other fee types (e.g. registration) can still send their own payloads as needed.
+// - Send customer_id, amount, payment_method, payment_date (optional), and notes (optional)
+// - Backend automatically handles customer status updates and invoice generation
+// - Response shape:
+//   {
+//     fee_submission: {...},
+//     invoice: {...},
+//     customer: {...}
+//   }
 export const submitFee = async (payload) => {
   const data = await apiFetch('/fee-submissions/submit', {
     method: 'POST',
@@ -12,14 +17,6 @@ export const submitFee = async (payload) => {
   });
 
   if (data.success) {
-    // New API returns collections instead of single records for billing-period payments
-    // Shape (simplified):
-    // {
-    //   fee_submissions: [...],
-    //   invoices: [...],
-    //   billing_periods: [...],
-    //   customer: {...}
-    // }
     return data.data;
   }
 
